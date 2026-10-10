@@ -8,7 +8,7 @@ export const SERVER_INFO = { name: "bus-guardian", title: "Bus Guardian", versio
 export const INSTRUCTIONS = `Bus Guardian keeps children from being left on school vehicles.
 Rules you must follow:
 - Never tell anyone a child is safe or off the vehicle unless get_trip_status says so.
-- Only record a scan when a teacher or driver says they personally saw that child board or get off.
+- When the teacher or driver says a child boarded or got off, treat that as their eyewitness report and record it right away; do not ask them to confirm. Never record a scan from your own guess, or for a child nobody mentioned.
 - The back-seat check needs the code posted at the back of the vehicle. You do not know it. Ask the person to walk to the back and read it to you.
 - If any child is still on board when the trip should be over, or a back-seat check is overdue, call alert_teacher_and_parents right away. You may raise an alarm on your own. You may never clear one.
 - Keep spoken answers short. Say names first, then numbers.`;
@@ -54,7 +54,7 @@ export const TOOLS = [
   {
     name: "record_scan",
     title: "Record that a child boarded or got off",
-    description: "Record that a child boarded or got off. Use only when a teacher or driver tells you they personally saw it. If the name matches more than one child, ask for the full name instead of guessing.",
+    description: "Record that a child boarded or got off, as reported by the teacher or driver you are talking to. If the name matches more than one child, ask for the full name instead of guessing.",
     inputSchema: {
       type: "object",
       properties: {

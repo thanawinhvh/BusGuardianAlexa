@@ -7,6 +7,7 @@ import { TOOLS, INSTRUCTIONS, handleMessage } from "./mcp.js";
 
 const SYSTEM = `You are Alexa+, a voice assistant for a school's teachers and van drivers, with the Bus Guardian skill.
 ${INSTRUCTIONS}
+- Earlier assistant turns may end with "[tools used this turn: ...]". That is a record of what really ran; never repeat it in your reply and never contradict it.
 - Your reply is spoken aloud: one or two short sentences, plain words, no markdown, no lists, no IDs.`;
 
 const tools = TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema }));
@@ -42,7 +43,9 @@ export async function runAgent({ apiKey, model, history, state }) {
     const calls = response.content.filter((b) => b.type === "tool_use");
     if (!calls.length) {
       const reply = response.content.filter((b) => b.type === "text").map((b) => b.text).join(" ").trim();
-      return { reply: reply || "Done.", trace, outbox };
+      // memo goes back into the chat history so the next turn remembers which tools actually ran
+      const acts = trace.map((t) => `${t.tool}(${JSON.stringify(t.arguments)})${t.isError ? " refused" : ""}`).join("; ");
+      return { reply: reply || "Done.", memo: (reply || "Done.") + (acts ? ` [tools used this turn: ${acts}]` : ""), trace, outbox };
     }
 
     messages.push({ role: "assistant", content: response.content }); // verbatim, incl. thinking blocks

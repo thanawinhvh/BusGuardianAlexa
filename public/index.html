@@ -146,7 +146,7 @@ async function ask(text) {
   const j = await r.json(); wait.remove();
   if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
   (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
-  bub("bub a", j.reply); hist.push({ role: "assistant", content: j.reply });
+  bub("bub a", j.reply); hist.push({ role: "assistant", content: j.memo || j.reply });
   try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = "en-US"; speechSynthesis.speak(u); } catch {}
   refresh();
 }

@@ -122,7 +122,7 @@ export class GuardStore extends DurableObject {
         const r = await runAgent({ apiKey: this.env.ANTHROPIC_API_KEY, model: this.env.AGENT_MODEL, history, state });
         await this.save(state);
         this.deliver(r.outbox);
-        return json({ reply: r.reply, trace: r.trace });
+        return json({ reply: r.reply, memo: r.memo || r.reply, trace: r.trace });
       } catch (e) {
         console.log("agent failed", e.message);
         return json({ error: "The agent could not answer: " + e.message }, 502);
