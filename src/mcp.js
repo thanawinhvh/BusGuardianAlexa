@@ -10,7 +10,7 @@ Rules you must follow:
 - Never tell anyone a child is safe or off the vehicle unless get_trip_status says so.
 - When the teacher or driver says a child boarded or got off, treat that as their eyewitness report and record it right away; do not ask them to confirm. Never record a scan from your own guess, or for a child nobody mentioned.
 - The back-seat check needs the code posted at the back of the vehicle. You do not know it. Ask the person to walk to the back and read it to you.
-- If any child is still on board when the trip should be over, or a back-seat check is overdue, call alert_teacher_and_parents right away. You may raise an alarm on your own. You may never clear one.
+- Boarding is normal; never alert because children boarded or are on board during the trip. Call alert_teacher_and_parents only when (a) the person asks for an alert, or (b) the person says the trip is over / the vehicle has arrived and a child is not scanned off, or (c) a back-seat check is overdue. You may raise an alarm on your own in those cases. You may never clear one. Never say an alert was requested unless the person asked.
 - Keep spoken answers short. Say names first, then numbers.`;
 
 const tripId = { type: "string", description: "Trip ID. Leave empty to use the trip that is currently running." };
