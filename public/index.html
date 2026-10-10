@@ -67,6 +67,7 @@ button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
     </div>
     <div class="chat" id="chat"></div>
     <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="primary" id="send">Send</button><button id="mic" title="Speak">🎤</button></div>
+    <p class="muted">Voice: <select id="voice"></select></p>
   </div>
 
   <div class="card">
@@ -136,6 +137,18 @@ $("card").onclick = async () => {
   const j = await r.json();
   $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
 };
+// Clearest English voice available; the dropdown lets you override (saved per browser).
+function voices() { try { return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en")); } catch { return []; } }
+function pickVoice() {
+  const vs = voices(); let saved = ""; try { saved = localStorage.getItem("bg-voice") || ""; } catch {}
+  return vs.find((v) => v.name === saved) || vs.find((v) => /premium|enhanced/i.test(v.name)) || vs.find((v) => /^(Samantha|Ava|Allison|Google US English)/.test(v.name)) || vs[0] || null;
+}
+function fillVoices() {
+  const sel = $("voice"), vs = voices(); if (!sel || !vs.length) return;
+  const cur = pickVoice();
+  sel.innerHTML = vs.map((v) => `<option ${cur && v.name === cur.name ? "selected" : ""}>${esc(v.name)}</option>`).join("");
+}
+try { speechSynthesis.onvoiceschanged = fillVoices; } catch {}
 const hist = [];
 function bub(cls, t) { const d = document.createElement("div"); d.className = cls; d.textContent = t; $("chat").appendChild(d); $("chat").scrollTop = 1e9; return d; }
 async function ask(text) {
@@ -147,7 +160,7 @@ async function ask(text) {
   if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
   (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
   bub("bub a", j.reply); hist.push({ role: "assistant", content: j.memo || j.reply });
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = "en-US"; speechSynthesis.speak(u); } catch {}
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = "en-US"; u.voice = pickVoice(); u.rate = 0.95; speechSynthesis.speak(u); } catch {}
   refresh();
 }
 $("send").onclick = () => ask($("say").value);
@@ -158,6 +171,8 @@ $("mic").onclick = () => {
   if (!R) return alert("Speech recognition is not available in this browser. Type instead.");
   const r = new R(); r.lang = "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
 };
+$("voice").onchange = (e) => { try { localStorage.setItem("bg-voice", e.target.value); } catch {} };
+fillVoices();
 refresh();
 setInterval(refresh, 2000);
 </script>
