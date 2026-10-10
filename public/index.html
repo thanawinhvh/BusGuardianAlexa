@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bus Guardian</title>
+<style>
+:root{--bg:#f5f4f0;--card:#fff;--fg:#1c1c1e;--mut:#6b6b70;--line:#e2e0da;--ok:#1f8f4e;--warn:#c47a00;--bad:#c62828;--acc:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#121214;--card:#1c1c1f;--fg:#f2f2f2;--mut:#9a9aa0;--line:#2c2c30;--acc:#7aa2ff}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,sans-serif}
+main{max-width:760px;margin:auto;padding:20px 16px 60px}
+h1{font-size:24px;margin:0}
+.sub{color:var(--mut);margin:2px 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.big{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:28px}
+.stat span{color:var(--mut);font-size:13px}
+.banner{border-radius:12px;padding:14px 16px;font-weight:600;margin-bottom:14px}
+.banner.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+.banner.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.banner.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+table{width:100%;border-collapse:collapse}
+td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:middle}
+.chip{font-size:13px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.chip.on{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.chip.off{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.chip.none{background:var(--line);color:var(--mut)}
+button{font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.right{text-align:right;white-space:nowrap}
+.msg{border-top:1px solid var(--line);padding:8px 0;font-size:14px}
+.msg small{color:var(--mut)}
+.muted{color:var(--mut);font-size:14px}
+.tail{font:700 28px ui-monospace,Menlo,monospace;letter-spacing:2px}
+</style>
+</head>
+<body>
+<main>
+  <h1>🚌 Bus Guardian</h1>
+  <p class="sub">No child left on the vehicle. Driver scans + Alexa+ agent, same safety rules.</p>
+
+  <div id="banner"></div>
+  <div class="card"><div class="big" id="stats"></div><p class="muted" id="tripline"></p></div>
+
+  <div class="card">
+    <strong>Riders</strong> <span class="muted">— driver taps simulate QR scans</span>
+    <table id="riders"></table>
+  </div>
+
+  <div class="card">
+    <strong>Alerts sent</strong> <span class="muted">— teacher and parents</span>
+    <div id="outbox"><p class="muted">None yet.</p></div>
+  </div>
+
+  <div class="card">
+    <strong>Admin</strong>
+    <p class="muted">The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.</p>
+    <button id="reset">Reset demo trip</button>
+    <button id="card">Show back-seat code card</button>
+    <div id="tail"></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let trip = null;
+function key() {
+  let k = null;
+  try { k = localStorage.getItem("bg-admin"); } catch {}
+  if (!k) { k = prompt("Admin key"); try { k && localStorage.setItem("bg-admin", k); } catch {} }
+  return k;
+}
+async function api(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), ...body }) });
+  const j = await r.json();
+  if (r.status === 401) { try { localStorage.removeItem("bg-admin"); } catch {} }
+  if (!r.ok) alert(j.error || "Error");
+  return j;
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function render(data) {
+  trip = (data.trips || []).find((t) => t.status === "ACTIVE") || (data.trips || [])[0];
+  if (!trip) { $("banner").innerHTML = '<div class="banner warn">No trip yet. Press "Reset demo trip".</div>'; return; }
+  const s = trip.summary;
+  const alerts = s.open_alerts || [];
+  let cls = "ok", msg = `All ${s.got_off} children off and back seat checked.`;
+  if (trip.status === "FINISHED") msg = "Trip closed safely.";
+  else if (alerts.length) { cls = "bad"; msg = "⚠️ " + alerts[alerts.length - 1].text; }
+  else if (s.still_on_board.length) { cls = "warn"; msg = `On board: ${s.still_on_board.join(", ")}`; }
+  else if (s.boarded && s.back_seat_check === "not done") { cls = "warn"; msg = "Everyone is off. Back-seat check still needed."; }
+  else if (!s.boarded) { cls = "warn"; msg = "Waiting for boarding."; }
+  $("banner").innerHTML = `<div class="banner ${cls}">${esc(msg)}</div>`;
+  $("stats").innerHTML = [["Riders", s.riders_total], ["Boarded", s.boarded], ["On board", s.still_on_board.length], ["Got off", s.got_off]]
+    .map(([l, v]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  $("tripline").textContent = `${trip.name} · ${trip.plate} · teacher ${trip.teacher} · back-seat check: ${s.back_seat_check} · ${trip.status}`;
+  $("riders").innerHTML = trip.riders.map((r) => {
+    const st = trip.lastScan[r.id];
+    const chip = st === "BOARD" ? '<span class="chip on">on board</span>' : st === "ALIGHT" ? '<span class="chip off">got off</span>' : '<span class="chip none">not boarded</span>';
+    const live = trip.status === "ACTIVE";
+    return `<tr><td>${esc(r.name)}</td><td>${chip}</td><td class="right">${live ? `<button data-r="${r.id}" data-t="BOARD">Board</button> <button data-r="${r.id}" data-t="ALIGHT">Off</button>` : ""}</td></tr>`;
+  }).join("");
+  const out = (data.outbox || []).filter((m) => m.tripId === trip.id);
+  $("outbox").innerHTML = out.length ? out.map((m) => `<div class="msg"><b>→ ${esc(m.to)}</b> <small>${esc(m.role)} · ${new Date(m.at).toLocaleTimeString()}</small><br>${esc(m.text)}</div>`).join("") : '<p class="muted">None yet.</p>';
+}
+
+async function refresh() {
+  try { render(await (await fetch("/api/state", { cache: "no-store" })).json()); } catch {}
+}
+$("riders").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-r]");
+  if (!b) return;
+  await api("/api/scan", { trip_id: trip.id, rider_id: b.dataset.r, type: b.dataset.t });
+  refresh();
+});
+$("reset").onclick = async () => { await api("/api/demo", {}); $("tail").innerHTML = ""; refresh(); };
+$("card").onclick = async () => {
+  if (!trip) return;
+  const r = await fetch(`/api/tail-card?trip_id=${encodeURIComponent(trip.id)}`, { headers: { "x-admin-key": key() || "" } });
+  const j = await r.json();
+  $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
+};
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

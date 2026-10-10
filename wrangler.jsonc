@@ -1,0 +1,12 @@
+{
+  "name": "bus-guardian",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-15",
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "durable_objects": { "bindings": [{ "name": "GUARD", "class_name": "GuardStore" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GuardStore"] }],
+  "triggers": { "crons": ["* * * * *"] },
+  "observability": { "enabled": true }
+  // Secrets (wrangler secret put …): ADMIN_KEY (dashboard + tail card), MCP_TOKEN (optional bearer for /mcp),
+  // LINE_TOKEN + LINE_TO (optional LINE push), ALERT_WEBHOOK_URL (optional). Var: ALLOWED_ORIGINS.
+}
