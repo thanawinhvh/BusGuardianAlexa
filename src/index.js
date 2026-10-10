@@ -4,6 +4,7 @@
 import { DurableObject } from "cloudflare:workers";
 import * as G from "./guard.js";
 import { handleMessage, PROTOCOL_VERSION } from "./mcp.js";
+import { runAgent } from "./agent.js";
 
 const SUPPORTED_VERSIONS = [PROTOCOL_VERSION, "2025-06-18", "2025-03-26"];
 
@@ -108,6 +109,24 @@ export class GuardStore extends DurableObject {
       if (r.err) return json({ error: r.err }, 400);
       await this.save(state);
       return json({ ok: true, summary: G.summary(state, t) });
+    }
+
+    // Simulated Alexa+: Claude chooses tools and every call goes through the MCP handler.
+    if (path === "/api/chat" && request.method === "POST") {
+      if (!this.env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY is not set on the server." }, 500);
+      const history = (Array.isArray(body.messages) ? body.messages : []).slice(-12)
+        .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+      if (!history.length || history[history.length - 1].role !== "user") return json({ error: "Send the user's message last." }, 400);
+      const state = await this.load();
+      try {
+        const r = await runAgent({ apiKey: this.env.ANTHROPIC_API_KEY, model: this.env.AGENT_MODEL, history, state });
+        await this.save(state);
+        this.deliver(r.outbox);
+        return json({ reply: r.reply, trace: r.trace });
+      } catch (e) {
+        console.log("agent failed", e.message);
+        return json({ error: "The agent could not answer: " + e.message }, 502);
+      }
     }
 
     if (path === "/api/demo" && request.method === "POST") {

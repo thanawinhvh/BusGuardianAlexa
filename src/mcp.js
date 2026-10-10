@@ -5,7 +5,7 @@ import * as G from "./guard.js";
 export const PROTOCOL_VERSION = "2025-11-25";
 export const SERVER_INFO = { name: "bus-guardian", title: "Bus Guardian", version: "0.1.0" };
 
-const INSTRUCTIONS = `Bus Guardian keeps children from being left on school vehicles.
+export const INSTRUCTIONS = `Bus Guardian keeps children from being left on school vehicles.
 Rules you must follow:
 - Never tell anyone a child is safe or off the vehicle unless get_trip_status says so.
 - Only record a scan when a teacher or driver says they personally saw that child board or get off.

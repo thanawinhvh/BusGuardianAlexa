@@ -34,6 +34,7 @@ button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
 .msg small{color:var(--mut)}
 .muted{color:var(--mut);font-size:14px}
 .tail{font:700 28px ui-monospace,Menlo,monospace;letter-spacing:2px}
+.chat{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0}.bub{padding:8px 12px;border-radius:12px;max-width:85%}.bub.u{align-self:flex-end;background:var(--acc);color:#fff}.bub.a{align-self:flex-start;background:var(--line)}.tool{font:12px ui-monospace,Menlo,monospace;color:var(--mut);align-self:flex-start}.tool.err{color:var(--bad)}.row{display:flex;gap:8px}.row input{flex:1;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}.chips button{margin:2px 4px 2px 0;font-size:13px}
 </style>
 </head>
 <body>
@@ -52,6 +53,20 @@ button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
   <div class="card">
     <strong>Alerts sent</strong> <span class="muted">— teacher and parents</span>
     <div id="outbox"><p class="muted">None yet.</p></div>
+  </div>
+
+  <div class="card">
+    <strong>🔊 Alexa+ (simulated)</strong> <span class="muted">— Claude calls the same MCP tools a real Alexa+ agent would</span>
+    <div class="chips">
+      <button data-q="Did every kid get off the van?">Did every kid get off?</button>
+      <button data-q="Mint, Bank, Fah, Ton and Ploy got off the van.">Five got off</button>
+      <button data-q="Alert the teacher and parents.">Alert</button>
+      <button data-q="Nong Kao got off. Everyone is off now.">Last one off</button>
+      <button data-q="I checked the back seat. The code is TAIL-GUESS123.">Wrong code</button>
+      <button data-q="Can we close the trip?">Close trip?</button>
+    </div>
+    <div class="chat" id="chat"></div>
+    <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="primary" id="send">Send</button><button id="mic" title="Speak">🎤</button></div>
   </div>
 
   <div class="card">
@@ -120,6 +135,28 @@ $("card").onclick = async () => {
   const r = await fetch(`/api/tail-card?trip_id=${encodeURIComponent(trip.id)}`, { headers: { "x-admin-key": key() || "" } });
   const j = await r.json();
   $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
+};
+const hist = [];
+function bub(cls, t) { const d = document.createElement("div"); d.className = cls; d.textContent = t; $("chat").appendChild(d); $("chat").scrollTop = 1e9; return d; }
+async function ask(text) {
+  text = text.trim(); if (!text) return;
+  $("say").value = ""; bub("bub u", text); hist.push({ role: "user", content: text });
+  const wait = bub("tool", "…");
+  const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), messages: hist }) });
+  const j = await r.json(); wait.remove();
+  if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
+  (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
+  bub("bub a", j.reply); hist.push({ role: "assistant", content: j.reply });
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = "en-US"; speechSynthesis.speak(u); } catch {}
+  refresh();
+}
+$("send").onclick = () => ask($("say").value);
+$("say").addEventListener("keydown", (e) => { if (e.key === "Enter") ask($("say").value); });
+document.querySelector(".chips").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) ask(b.dataset.q); });
+$("mic").onclick = () => {
+  const R = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!R) return alert("Speech recognition is not available in this browser. Type instead.");
+  const r = new R(); r.lang = "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
 };
 refresh();
 setInterval(refresh, 2000);
