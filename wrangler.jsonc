@@ -6,7 +6,8 @@
   "durable_objects": { "bindings": [{ "name": "GUARD", "class_name": "GuardStore" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GuardStore"] }],
   "triggers": { "crons": ["* * * * *"] },
+  "vars": { "BYTEPLUS_TTS_SPEAKER": "th_female_bv568_neutral_uranus_bigtts" },
   "observability": { "enabled": true }
   // Secrets (wrangler secret put …): ADMIN_KEY (dashboard + tail card), MCP_TOKEN (optional bearer for /mcp),
-  // LINE_TOKEN + LINE_TO (optional LINE push), ALERT_WEBHOOK_URL (optional). Var: ALLOWED_ORIGINS.
+  // BYTEPLUS_TTS_KEY (Alexa voice), LINE_TOKEN + LINE_TO (optional LINE push), ALERT_WEBHOOK_URL (optional). Var: ALLOWED_ORIGINS.
 }

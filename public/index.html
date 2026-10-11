@@ -135,7 +135,7 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
       <div class="chips" id="chips"></div>
       <div class="chat" id="chat"></div>
       <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="btn primary" id="send">Send</button><button class="btn" id="mic" title="Speak">🎤</button></div>
-      <p class="muted">Voice: <select id="voice"></select></p>
+      <p class="muted">Voice: <select id="voice"></select> <input id="spk" placeholder="speaker ID e.g. en_female_..." hidden style="font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);width:260px;max-width:100%"></p>
     </div>
 
     <div class="card" id="admin">
@@ -319,14 +319,34 @@ function fillChips() {
 // macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
 function voices() { const p = lang() === "th" ? "th" : "en"; try { return speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith(p) && !NOVELTY.test(v.name)); } catch { return []; } }
-function pickVoice() {
-  const vs = voices(); let saved = ""; try { saved = localStorage.getItem("bg-voice-" + lang()) || ""; } catch {}
-  return vs.find((v) => v.name === saved) || vs.find((v) => /premium|enhanced/i.test(v.name)) || vs.find((v) => /^(Samantha|Ava|Allison|Google US English)/.test(v.name)) || vs[0] || null;
+// Voice choice per language, saved in this browser. "cloud:<speaker>" = BytePlus via /api/tts; "custom" = speaker ID typed below; "browser:<name>" = built-in voice.
+const CLOUD = [["th_female_bv568_neutral_uranus_bigtts", "☁ BytePlus · Thai female"], ["en_female_stokie_uranus_bigtts", "☁ BytePlus · English female (Stokie)"]];
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ""; localStorage.setItem(k, v); } catch { return ""; } };
+function choice() { return ls("bg-voice-" + lang()) || "cloud:" + CLOUD[0][0]; }
+function browserVoice() {
+  const vs = voices(), c = choice(), saved = c.startsWith("browser:") ? c.slice(8) : "";
+  return vs.find((v) => v.name === saved) || vs.find((v) => /premium|enhanced/i.test(v.name)) || vs.find((v) => /^(Samantha|Ava|Allison|Kanya|Narisa|Google US English)/.test(v.name)) || vs[0] || null;
 }
 function fillVoices() {
-  const sel = $("voice"), vs = voices(); if (!sel || !vs.length) return;
-  const cur = pickVoice();
-  sel.innerHTML = vs.map((v) => `<option ${cur && v.name === cur.name ? "selected" : ""}>${esc(v.name)}</option>`).join("");
+  const sel = $("voice"), c = choice();
+  const opts = CLOUD.map(([id, name]) => [`cloud:${id}`, name]).concat([["custom", "☁ BytePlus · " + (lang() === "th" ? "ใส่ ID เสียงเอง…" : "paste your own speaker ID…")]])
+    .concat(voices().map((v) => [`browser:${v.name}`, v.name]));
+  sel.innerHTML = opts.map(([v, n]) => `<option value="${esc(v)}" ${v === c ? "selected" : ""}>${esc(n)}</option>`).join("");
+  $("spk").hidden = c !== "custom"; $("spk").value = ls("bg-speaker");
+}
+let audioEl = null;
+async function speak(text) {
+  try { speechSynthesis.cancel(); audioEl && audioEl.pause(); } catch {}
+  const c = choice();
+  if (c.startsWith("cloud:") || c === "custom") {
+    const speaker = c === "custom" ? ls("bg-speaker") : c.slice(6);
+    try {
+      const r = await fetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), text, speaker }) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || r.status);
+      audioEl = new Audio(URL.createObjectURL(await r.blob())); await audioEl.play(); return;
+    } catch (e) { bub("tool", "cloud voice unavailable (" + e.message + ") — using the built-in voice"); }
+  }
+  try { const u = new SpeechSynthesisUtterance(text); u.lang = lang() === "th" ? "th-TH" : "en-US"; u.voice = browserVoice(); u.rate = 0.95; speechSynthesis.speak(u); } catch {}
 }
 try { speechSynthesis.onvoiceschanged = fillVoices; } catch {}
 
@@ -341,7 +361,7 @@ async function ask(text) {
   if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
   (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
   bub("bub a", j.reply); hist.push({ role: "assistant", content: j.memo || j.reply });
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = lang() === "th" ? "th-TH" : "en-US"; u.voice = pickVoice(); u.rate = 0.95; speechSynthesis.speak(u); } catch {}
+  speak(j.reply);
   refresh();
 }
 $("send").onclick = () => ask($("say").value);
@@ -352,7 +372,8 @@ $("mic").onclick = () => {
   if (!R) return alert(lang() === "th" ? t("noMic") : "Speech recognition is not available in this browser. Type instead.");
   const r = new R(); r.lang = lang() === "th" ? "th-TH" : "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
 };
-$("voice").onchange = (e) => { try { localStorage.setItem("bg-voice-" + lang(), e.target.value); } catch {} };
+$("voice").onchange = (e) => { ls("bg-voice-" + lang(), e.target.value); fillVoices(); };
+$("spk").onchange = (e) => ls("bg-speaker", e.target.value.trim());
 $("lang").onchange = (e) => {
   try { localStorage.setItem("bg-lang", e.target.value); } catch {}
   applyStatic(); fillChips(); fillVoices(); refresh();

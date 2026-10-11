@@ -132,6 +132,29 @@ export class GuardStore extends DurableObject {
       return json({ ok: true });
     }
 
+    // Alexa's voice: BytePlus Seed TTS (NDJSON of base64 mp3 chunks). Admin-key only: every call costs credits.
+    if (path === "/api/tts" && request.method === "POST") {
+      const text = String(body.text || "").trim().slice(0, 500);
+      if (!text) return json({ error: "missing text" }, 400);
+      if (!this.env.BYTEPLUS_TTS_KEY || !this.env.BYTEPLUS_TTS_SPEAKER) return json({ error: "tts not configured" }, 503);
+      const up = await fetch("https://voice.ap-southeast-1.bytepluses.com/api/v3/tts/unidirectional", {
+        method: "POST",
+        headers: { "x-api-key": this.env.BYTEPLUS_TTS_KEY, "X-Api-Resource-Id": "seed-tts-2.0", "content-type": "application/json" },
+        body: JSON.stringify({ req_params: { text, speaker: /^[a-z]{2,3}_[a-z0-9_]{3,80}$/i.test(body.speaker || "") ? body.speaker : this.env.BYTEPLUS_TTS_SPEAKER, audio_params: { format: "mp3", sample_rate: 24000, tone: 1, speech_rate: -10, volume: 32 } } }),
+      });
+      if (!up.ok) { console.log("tts upstream", up.status); return json({ error: "tts upstream error" }, 502); }
+      const chunks = [];
+      for (const line of (await up.text()).split("\n")) {
+        const t = line.trim().replace(/^data:\s*/, "");
+        if (!t || t === "[DONE]") continue;
+        try { const e = JSON.parse(t); const b = e.data || e.audio; if (b) chunks.push(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); } catch {}
+      }
+      if (!chunks.length) return json({ error: "no audio" }, 502);
+      const out = new Uint8Array(chunks.reduce((n, a) => n + a.length, 0)); let o = 0;
+      for (const a of chunks) { out.set(a, o); o += a.length; }
+      return new Response(out, { headers: { "content-type": "audio/mpeg", "cache-control": "no-store" } });
+    }
+
     // Simulated Alexa+: Claude chooses tools and every call goes through the MCP handler.
     if (path === "/api/chat" && request.method === "POST") {
       if (!this.env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY is not set on the server." }, 500);
