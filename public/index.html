@@ -143,6 +143,8 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
       <p class="sub">The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.</p>
       <button class="btn danger" id="reset">Reset demo trip</button>
       <button class="btn" id="card">Show back-seat code card</button>
+      <button class="btn" id="codes">Show parent codes</button>
+      <div id="pcodes"></div>
       <div id="tail"></div>
     </div>
   </div>
@@ -197,7 +199,7 @@ const D = {
     "No trip": "ยังไม่มีทริป", "Press Reset demo trip": "กดรีเซ็ตทริปตัวอย่าง", "Live": "สด", "Loading…": "กำลังโหลด…",
     "Driver taps simulate QR scans": "คนขับแตะเพื่อจำลองการสแกน QR", "PASSENGER": "เด็ก", "STATUS": "สถานะ", "ACTIONS": "การทำงาน",
     "Live location": "ตำแหน่งรถสด", "(simulated)": "(จำลอง)", "Send": "ส่ง", "Voice:": "เสียง:", "Reset demo trip": "รีเซ็ตทริปตัวอย่าง",
-    "Show back-seat code card": "แสดงบัตรรหัสท้ายรถ", "Alerts sent": "แจ้งเตือนที่ส่งแล้ว", "Teacher and parents": "ครูและผู้ปกครอง",
+    "Show back-seat code card": "แสดงบัตรรหัสท้ายรถ", "Show parent codes": "แสดงรหัสผู้ปกครอง", "Alerts sent": "แจ้งเตือนที่ส่งแล้ว", "Teacher and parents": "ครูและผู้ปกครอง",
     "Claude calls the same MCP tools a real Alexa+ agent would. Red lines are the server saying no.": "Claude เรียกเครื่องมือ MCP ชุดเดียวกับที่ Alexa+ จริงจะเรียก บรรทัดสีแดงคือเซิร์ฟเวอร์ปฏิเสธ",
     "The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.": "รหัสท้ายรถแสดงที่นี่ที่เดียว เพื่อพิมพ์ไปติดท้ายรถ Alexa+ ไม่มีทางเห็นรหัสนี้",
   },
@@ -205,7 +207,7 @@ const D = {
 const lang = () => { let l = ""; try { l = localStorage.getItem("bg-lang") || ""; } catch {} if (l === "th" || l === "en") return l; return (navigator.language || "").startsWith("th") ? "th" : "en"; };
 const t = (k, ...a) => { const v = lang() === "th" ? D.th[k] : undefined; return typeof v === "function" ? v(...a) : v !== undefined ? v : k; };
 const EN = {};
-const SKIP = new Set(["banner", "stats", "status", "rows", "outbox", "tail", "chat", "locSub", "voice", "lang", "chips"]);
+const SKIP = new Set(["banner", "stats", "status", "rows", "outbox", "tail", "pcodes", "chat", "locSub", "voice", "lang", "chips"]);
 function applyStatic() {
   const th = lang() === "th";
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -316,6 +318,15 @@ function fillChips() {
   const l = lang(); $("lang").value = l;
   $("chips").innerHTML = QUICK[l].map(([t, q]) => `<button class="btn sm" data-q="${esc(q)}">${esc(t)}</button>`).join("");
 }
+$("codes").onclick = async () => {
+  if (!trip) return;
+  const r = await fetch(`/api/parent-codes?trip_id=${encodeURIComponent(trip.id)}`, { headers: { "x-admin-key": key() || "" } });
+  const j = await r.json(), th = lang() === "th";
+  $("pcodes").innerHTML = r.ok
+    ? `<p class="muted">${th ? "ให้ผู้ปกครองแต่ละคนเปิดลิงก์นี้ แล้วกรอกรหัสของลูกตัวเองครั้งเดียว:" : "Each parent opens this link and enters their own child's code once:"}<br><b>${esc(location.origin)}/parent</b></p>`
+      + `<table>${j.codes.map((c) => `<tr><td><b>${esc(c.name)}</b><br><small class="muted">${esc(c.parent || "")}</small></td><td class="acts"><span class="tail" style="font-size:22px">${esc(c.code)}</span></td></tr>`).join("")}</table>`
+    : `<p class="muted">${esc(j.error)}</p>`;
+};
 // macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
 function voices() { const p = lang() === "th" ? "th" : "en"; try { return speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith(p) && !NOVELTY.test(v.name)); } catch { return []; } }

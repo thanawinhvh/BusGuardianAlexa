@@ -12,7 +12,9 @@
 export const TAIL_GRACE_MS = 5 * 60 * 1000;
 
 export function emptyState() {
-  return { trips: [], scans: [], alerts: [], outbox: [] };
+  // kids: stable pairing code per child (kept apart from trips so the public dashboard view can never expose it);
+  // devices: parent phones that entered a code once.
+  return { trips: [], scans: [], alerts: [], outbox: [], kids: {}, devices: {} };
 }
 
 function uid(prefix) {
@@ -48,6 +50,7 @@ export function createTrip(state, o, now = Date.now()) {
     finishedAt: 0,
     createdAt: now,
   };
+  for (const r of riders) ensureKid(state, r);
   state.trips.unshift(trip);
   return { trip };
 }
@@ -201,4 +204,69 @@ export function summary(state, trip) {
 export function publicTrip(trip) {
   const { tailCode, ...rest } = trip;
   return rest;
+}
+
+
+// ---------- Parent pairing ----------
+// A parent enters the school's code once; the phone keeps a long random device token. From then on the
+// phone is "the parent of child X" with no login. ponytail: child identity = name+parent text; a real
+// school roster ID replaces this when this is wired to a student system.
+const kidKey = (r) => `${String(r.name || "").trim().toLowerCase()}|${String(r.parent || "").trim().toLowerCase()}`;
+const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const randomString = (n, alphabet) => { const b = new Uint8Array(n); crypto.getRandomValues(b); return Array.from(b, (x) => alphabet[x % alphabet.length]).join(""); };
+const normCode = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+export function ensureKid(state, rider) {
+  state.kids ||= {};
+  const key = kidKey(rider);
+  if (!state.kids[key]) {
+    let code;
+    do code = randomString(6, PAIR_ALPHABET); while (Object.values(state.kids).some((k) => k.code === code));
+    state.kids[key] = { code, name: rider.name, parent: rider.parent };
+  }
+  return state.kids[key];
+}
+
+export function pairingCodes(state, trip) {
+  return trip.riders.map((r) => ({ name: r.name, parent: r.parent, code: ensureKid(state, r).code }));
+}
+
+export function pairDevice(state, code, now = Date.now()) {
+  const c = normCode(code);
+  const key = Object.keys(state.kids || {}).find((k) => state.kids[k].code === c);
+  if (!c || !key) return { err: "That code is not valid." };
+  state.devices ||= {};
+  const device = randomString(32, "abcdefghijklmnopqrstuvwxyz0123456789");
+  state.devices[device] = { key, at: now };
+  const old = Object.keys(state.devices);
+  if (old.length > 500) delete state.devices[old[0]]; // oldest first
+  return { device, name: state.kids[key].name };
+}
+
+export function unpairDevice(state, device) {
+  if (state.devices && state.devices[device]) delete state.devices[device];
+}
+
+// What one parent may see: only their own child, only while that child is on the vehicle may the position show,
+// and never other children's names or the alert text (which can list them).
+export function parentView(state, device, now = Date.now()) {
+  const d = state.devices && state.devices[device];
+  const kid = d && state.kids[d.key];
+  if (!kid) return { err: "Unknown device." };
+  const trip = state.trips.find((t) => t.riders.some((r) => kidKey(r) === d.key));
+  const view = { child: kid.name, trip: null };
+  if (!trip) return view;
+  const rider = trip.riders.find((r) => kidKey(r) === d.key);
+  const mine = state.scans.filter((x) => x.tripId === trip.id && x.riderId === rider.id);
+  const last = mine[mine.length - 1];
+  const onBoard = !!last && last.type === "BOARD" && trip.status === "ACTIVE";
+  const alerting = onBoard && state.alerts.some((a) => a.tripId === trip.id && !a.resolvedAt);
+  view.trip = { name: trip.name, vehicle: trip.plate, status: trip.status };
+  view.state = !last ? "NOT_BOARDED" : last.type === "BOARD" ? "ON_BOARD" : "GOT_OFF";
+  view.since = last ? last.at : 0;
+  view.timeline = mine.map((x) => ({ type: x.type, at: x.at }));
+  view.alert = alerting;
+  const loc = state.location;
+  view.location = onBoard && loc ? { lat: loc.lat, lng: loc.lng, speed: loc.speed, acc: loc.acc, at: loc.at, trail: (loc.trail || []).slice(-60) } : null;
+  return view;
 }

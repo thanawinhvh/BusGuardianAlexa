@@ -94,3 +94,39 @@ test("scan log is append-only", () => {
   assert.equal(s.scans.length, 3);
   assert.deepEqual(call(s, "get_trip_status", {}).structuredContent.still_on_board, ["Mint"]);
 });
+
+test("parent pairing: code once, then the device is that child's parent and sees only their own child", () => {
+  const s = demo();
+  const codes = G.pairingCodes(s, s.trips[0]);
+  assert.equal(codes.length, 3);
+  assert.ok(codes.every((c) => /^[A-Z2-9]{6}$/.test(c.code)));
+  assert.equal(G.pairDevice(s, "ZZZZZZ").err, "That code is not valid.");
+
+  const kao = codes.find((c) => c.name === "Nong Kao");
+  const p = G.pairDevice(s, kao.code.toLowerCase().replace(/(...)(...)/, "$1-$2")); // forgiving format
+  assert.ok(p.device && p.name === "Nong Kao");
+
+  let v = G.parentView(s, p.device);
+  assert.equal(v.child, "Nong Kao"); assert.equal(v.state, "NOT_BOARDED"); assert.equal(v.location, null);
+  s.location = { lat: 1, lng: 2, speed: 3, acc: 4, at: 5, trail: [[1, 2]] };
+
+  call(s, "record_scan", { child_name: "Nong Kao", event: "boarded" });
+  v = G.parentView(s, p.device);
+  assert.equal(v.state, "ON_BOARD"); assert.deepEqual([v.location.lat, v.location.lng], [1, 2]);
+
+  call(s, "record_scan", { child_name: "Nong Kao", event: "got_off" });
+  v = G.parentView(s, p.device);
+  assert.equal(v.state, "GOT_OFF"); assert.equal(v.location, null, "no bus position once the child is off");
+
+  const json = JSON.stringify(v);
+  assert.ok(!json.includes("Mint") && !json.includes("Bank"), "other children never appear");
+  G.unpairDevice(s, p.device);
+  assert.equal(G.parentView(s, p.device).err, "Unknown device.");
+});
+
+test("pairing codes never appear in the public trip view or tool output", () => {
+  const s = demo();
+  const codes = G.pairingCodes(s, s.trips[0]).map((c) => c.code);
+  const everything = JSON.stringify([G.publicTrip(s.trips[0]), G.summary(s, s.trips[0]), call(s, "get_trip_status", {}), call(s, "list_trips", {})]);
+  for (const c of codes) assert.ok(!everything.includes(c));
+});

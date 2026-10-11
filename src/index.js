@@ -97,10 +97,31 @@ export class GuardStore extends DurableObject {
       }, 200, { "cache-control": "no-store" });
     }
 
+    if (path === "/api/parent/me" && request.method === "GET") {
+      const state = await this.load();
+      const v = G.parentView(state, request.headers.get("x-device") || "");
+      return json(v, v.err ? 401 : 200, { "cache-control": "no-store" });
+    }
+
     let body = {};
     if (request.method === "POST") {
       try { body = await request.json(); } catch { return json({ error: "Body must be JSON." }, 400); }
     }
+    if (path === "/api/parent/pair" && request.method === "POST") {
+      const now = Date.now();
+      this.fails = (this.fails || []).filter((t) => now - t < 10 * 60 * 1000);
+      if (this.fails.length >= 20) return json({ error: "Too many wrong codes. Try again in a few minutes." }, 429);
+      const state = await this.load();
+      const r = G.pairDevice(state, body.code);
+      if (r.err) { this.fails.push(now); return json({ error: r.err }, 400); }
+      await this.save(state);
+      return json(r);
+    }
+    if (path === "/api/parent/unpair" && request.method === "POST") {
+      const state = await this.load(); G.unpairDevice(state, String(body.device || "")); await this.save(state);
+      return json({ ok: true });
+    }
+
     if (!this.isAdmin(request, url, body)) return json({ error: "Admin key required." }, 401);
 
     // Language for alerts to teacher/parents (also used by the overdue-check cron). Dashboard sends it with chat/demo/lang.
@@ -197,6 +218,15 @@ export class GuardStore extends DurableObject {
       });
       await this.save(state);
       return json({ ok: true, trip_id: state.trips[0].id });
+    }
+
+    // Pairing codes to hand to parents (printed or sent by the school). Admin only.
+    if (path === "/api/parent-codes" && request.method === "GET") {
+      const state = await this.load();
+      const t = G.findTrip(state, url.searchParams.get("trip_id")) || state.trips[0];
+      if (!t) return json({ error: "No trip." }, 404);
+      const codes = G.pairingCodes(state, t); await this.save(state);
+      return json({ trip: t.name, codes });
     }
 
     // The only way to see the back-seat code: an admin printing the card for the vehicle.

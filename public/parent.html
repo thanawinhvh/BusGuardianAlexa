@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bus Guardian — Parent</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--line:#e3e8ee;--ok:#16a34a;--ok-bg:#e8f7ee;--warn:#d97706;--warn-bg:#fdf3e1;--bad:#dc2626;--bad-bg:#fde8e8;--acc:#16a34a;--acc-fg:#fff;--shadow:0 1px 2px rgba(15,31,61,.05),0 8px 24px rgba(15,31,61,.08)}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1412;--card:#16201d;--fg:#eaf1ee;--mut:#8ea39b;--line:#25332e;--ok:#3ccf74;--ok-bg:#12301f;--warn:#f0a63a;--warn-bg:#33270f;--bad:#ff6b6b;--bad-bg:#3a1717;--acc:#2fbf63;--acc-fg:#04130a;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:460px;margin:0 auto;padding:18px 16px 60px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.top img{width:44px;height:44px;object-fit:contain}.top b{font-size:19px}.top small{display:block;color:var(--mut);font-size:12px;line-height:1.2}
+.top select{margin-left:auto;font:inherit;padding:6px 8px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px;margin-bottom:14px}
+h1{margin:0 0 4px;font-size:24px}.muted{color:var(--mut);font-size:14px}
+input{font:700 28px ui-monospace,Menlo,monospace;letter-spacing:6px;text-align:center;text-transform:uppercase;width:100%;padding:14px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--fg);margin:14px 0}
+input:focus{outline:none;border-color:var(--acc)}
+.btn{font:inherit;font-weight:700;font-size:17px;border:0;border-radius:14px;padding:14px;width:100%;background:var(--acc);color:var(--acc-fg);cursor:pointer}
+.btn:disabled{background:var(--line);color:var(--mut);cursor:not-allowed}
+.btn.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.err{color:var(--bad);font-size:14px;min-height:22px;margin-top:-6px}
+.status{display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px;margin:14px 0}
+.status .dot{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-size:28px;color:#fff;flex:none}
+.status b{display:block;font-size:20px;line-height:1.2}.status span{font-size:14px;color:var(--fg);opacity:.8}
+.status.on{background:var(--warn-bg);color:var(--warn)}.status.on .dot{background:var(--warn)}
+.status.off{background:var(--ok-bg);color:var(--ok)}.status.off .dot{background:var(--ok)}
+.status.none{background:var(--bg);color:var(--mut)}.status.none .dot{background:var(--mut)}
+.alert{background:var(--bad-bg);color:var(--bad);border-radius:14px;padding:12px 14px;font-weight:600;margin-bottom:12px}
+ul{list-style:none;padding:0;margin:8px 0 0}li{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line);font-size:15px}
+#map{height:280px;border-radius:14px;margin-top:12px;z-index:0}
+@media (prefers-color-scheme:dark){#map .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
+a.u{color:var(--mut);font-size:13px;text-align:center;display:block;margin-top:6px;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><img src="/logo.png" alt=""><div><b>Bus Guardian</b><small id="tag"></small></div>
+    <select id="lang"><option value="en">English</option><option value="th">ไทย</option></select></div>
+
+  <div id="pair" class="card" hidden>
+    <h1 id="t1"></h1><p class="muted" id="t2"></p>
+    <input id="code" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="••••••" inputmode="text">
+    <div class="err" id="err"></div>
+    <button class="btn" id="go"></button>
+  </div>
+
+  <div id="home" hidden>
+    <div class="card">
+      <p class="muted" id="who"></p><h1 id="child"></h1><p class="muted" id="trip"></p>
+      <div id="alert" class="alert" hidden></div>
+      <div id="status" class="status"></div>
+      <button class="btn" id="track"></button>
+      <p class="muted" id="hint" style="margin:8px 0 0"></p>
+      <div id="map" hidden></div>
+    </div>
+    <div class="card"><b id="tl"></b><ul id="timeline"></ul></div>
+    <a class="u" id="unlink"></a>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ""; if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { return ""; } };
+const lang = () => { const l = ls("bg-lang"); return l === "th" || l === "en" ? l : (navigator.language || "").startsWith("th") ? "th" : "en"; };
+const T = {
+  en: { tag: "For parents", t1: "Link your child", t2: "Enter the 6-character code from your child's school. You only do this once on this phone.", go: "Link", bad: "That code is not valid.",
+    who: "You are the parent of", trip: (n, v) => `${n}${v ? " · " + v : ""}`, none: "Not on the van yet", on: "On the van", off: "Got off safely",
+    sNone: "Waiting for boarding", sOn: (t) => `Since ${t}`, sOff: (t) => `At ${t}`, alert: "The school has raised an alert and the teacher is checking now.",
+    track: "Track the bus", hide: "Hide map", hintOn: "Live position shows only while your child is on the van.", hintOff: "Tracking is available while your child is on the van.",
+    tl: "Today", board: "Boarded", alight: "Got off", unlink: "Not your child? Unlink this phone", finished: "Trip finished", empty: "No trip yet",
+    spd: (k, a) => `${k != null ? k + " km/h · " : ""}updated ${a} s ago` },
+  th: { tag: "สำหรับผู้ปกครอง", t1: "ผูกบัญชีลูกของคุณ", t2: "กรอกรหัส 6 ตัวที่โรงเรียนให้ไว้ ทำครั้งเดียวบนมือถือเครื่องนี้ ต่อไปเปิดมาก็ใช้ได้เลย", go: "ผูกบัญชี", bad: "รหัสนี้ไม่ถูกต้อง",
+    who: "คุณคือผู้ปกครองของ", trip: (n, v) => `${n}${v ? " · " + v : ""}`, none: "ยังไม่ได้ขึ้นรถ", on: "อยู่บนรถ", off: "ลงรถอย่างปลอดภัยแล้ว",
+    sNone: "รอเด็กขึ้นรถ", sOn: (t) => `ตั้งแต่ ${t}`, sOff: (t) => `เวลา ${t}`, alert: "โรงเรียนยกแจ้งเตือนแล้ว ครูกำลังตรวจสอบอยู่ค่ะ",
+    track: "ติดตามรถ", hide: "ซ่อนแผนที่", hintOn: "ตำแหน่งสดจะแสดงเฉพาะตอนที่ลูกอยู่บนรถ", hintOff: "ติดตามรถได้ตอนที่ลูกอยู่บนรถ",
+    tl: "วันนี้", board: "ขึ้นรถ", alight: "ลงรถ", unlink: "ไม่ใช่ลูกของคุณ? ยกเลิกการผูกมือถือเครื่องนี้", finished: "จบทริปแล้ว", empty: "ยังไม่มีทริป",
+    spd: (k, a) => `${k != null ? k + " กม./ชม. · " : ""}อัปเดต ${a} วินาทีที่แล้ว` },
+};
+const t = (k, ...a) => { const v = T[lang()][k]; return typeof v === "function" ? v(...a) : v; };
+const hm = (ms) => new Date(ms).toLocaleTimeString(lang() === "th" ? "th-TH" : "en-US", { hour: "2-digit", minute: "2-digit" });
+
+let device = ls("bg-device"), showMap = false, map, marker, line, last = null, timer = null;
+
+function labels() {
+  document.documentElement.lang = lang(); $("lang").value = lang();
+  $("tag").textContent = t("tag"); $("t1").textContent = t("t1"); $("t2").textContent = t("t2"); $("go").textContent = t("go");
+  $("who").textContent = t("who"); $("tl").textContent = t("tl"); $("unlink").textContent = t("unlink");
+  if (last) draw(last);
+}
+
+async function me() {
+  if (!device) return null;
+  const r = await fetch("/api/parent/me", { headers: { "x-device": device }, cache: "no-store" });
+  if (r.status === 401) { device = ""; ls("bg-device", null); return null; }   // unlinked or reset: ask for the code again
+  return r.json();
+}
+
+function draw(v) {
+  last = v;
+  $("pair").hidden = true; $("home").hidden = false;
+  $("child").textContent = v.child;
+  if (!v.trip) { $("trip").textContent = t("empty"); $("status").className = "status none"; $("status").innerHTML = `<div class="dot">…</div><div><b>${t("none")}</b></div>`; $("track").disabled = true; $("hint").textContent = t("hintOff"); $("timeline").innerHTML = ""; $("alert").hidden = true; return; }
+  $("trip").textContent = t("trip", v.trip.name, v.trip.vehicle) + (v.trip.status === "FINISHED" ? " · " + t("finished") : "");
+  const cls = v.state === "ON_BOARD" ? "on" : v.state === "GOT_OFF" ? "off" : "none";
+  const [icon, title, sub] = v.state === "ON_BOARD" ? ["🚌", t("on"), t("sOn", hm(v.since))] : v.state === "GOT_OFF" ? ["✓", t("off"), t("sOff", hm(v.since))] : ["…", t("none"), t("sNone")];
+  $("status").className = "status " + cls; $("status").innerHTML = `<div class="dot">${icon}</div><div><b>${esc(title)}</b><span>${esc(sub)}</span></div>`;
+  $("alert").hidden = !v.alert; $("alert").textContent = t("alert");
+  const can = !!v.location;
+  $("track").disabled = !can; $("track").textContent = showMap && can ? t("hide") : t("track");
+  $("hint").textContent = can ? (showMap ? t("spd", v.location.speed != null ? Math.round(v.location.speed * 3.6) : null, Math.round((Date.now() - v.location.at) / 1000)) : t("hintOn")) : t("hintOff");
+  $("timeline").innerHTML = (v.timeline || []).slice().reverse().map((x) => `<li><span>${x.type === "BOARD" ? t("board") : t("alight")}</span><b>${hm(x.at)}</b></li>`).join("");
+  drawMap(can && showMap ? v.location : null);
+}
+
+function drawMap(loc) {
+  $("map").hidden = !loc;
+  if (!loc || !window.L) return;
+  const ll = [loc.lat, loc.lng];
+  if (!map) {
+    map = L.map("map").setView(ll, 15);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    marker = L.marker(ll).addTo(map); line = L.polyline(loc.trail || [], { color: "#16a34a", weight: 4 }).addTo(map);
+  }
+  marker.setLatLng(ll); line.setLatLngs(loc.trail || []); map.panTo(ll); setTimeout(() => map.invalidateSize(), 50);
+}
+
+async function tick() {
+  try { const v = await me(); if (v) draw(v); else { last = null; $("home").hidden = true; $("pair").hidden = false; } } catch {}
+}
+
+$("go").onclick = async () => {
+  $("err").textContent = "";
+  const r = await fetch("/api/parent/pair", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: $("code").value }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { $("err").textContent = r.status === 429 ? j.error : t("bad"); return; }
+  device = j.device; ls("bg-device", device); $("code").value = ""; tick();   // from now on this phone is "parent of <child>"
+};
+$("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+$("track").onclick = () => { showMap = !showMap; if (last) draw(last); };
+$("unlink").onclick = async () => {
+  if (device) await fetch("/api/parent/unpair", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ device }) }).catch(() => {});
+  device = ""; ls("bg-device", null); last = null; showMap = false; $("home").hidden = true; $("pair").hidden = false;
+};
+$("lang").onchange = (e) => { ls("bg-lang", e.target.value); labels(); };
+labels(); tick(); timer = setInterval(tick, 3000);
+</script>
+</body>
+</html>
