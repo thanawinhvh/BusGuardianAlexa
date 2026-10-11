@@ -130,16 +130,9 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
     </div>
 
     <div class="card" id="alexa">
-      <h2>🔊 Alexa+ <span class="muted">(simulated)</span></h2>
+      <h2>🔊 Alexa+ <span class="muted">(simulated)</span> <select id="lang" title="Language" style="float:right"><option value="en">English</option><option value="th">ไทย</option></select></h2>
       <p class="sub">Claude calls the same MCP tools a real Alexa+ agent would. Red lines are the server saying no.</p>
-      <div class="chips">
-        <button class="btn sm" data-q="Did every kid get off the van?">Did every kid get off?</button>
-        <button class="btn sm" data-q="Mint, Bank, Fah, Ton and Ploy got off the van.">Five got off</button>
-        <button class="btn sm" data-q="Alert the teacher and parents.">Alert</button>
-        <button class="btn sm" data-q="Nong Kao got off. Everyone is off now.">Last one off</button>
-        <button class="btn sm" data-q="I checked the back seat. The code is TAIL-GUESS123.">Wrong code</button>
-        <button class="btn sm" data-q="Can we close the trip?">Close trip?</button>
-      </div>
+      <div class="chips" id="chips"></div>
       <div class="chat" id="chat"></div>
       <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="btn primary" id="send">Send</button><button class="btn" id="mic" title="Speak">🎤</button></div>
       <p class="muted">Voice: <select id="voice"></select></p>
@@ -262,11 +255,23 @@ $("card").onclick = async () => {
   $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
 };
 
+const QUICK = {
+  en: [["Did every kid get off?", "Did every kid get off the van?"], ["Five got off", "Mint, Bank, Fah, Ton and Ploy got off the van."], ["Alert", "Alert the teacher and parents."],
+       ["Last one off", "Nong Kao got off. Everyone is off now."], ["Wrong code", "I checked the back seat. The code is TAIL-GUESS123."], ["Close trip?", "Can we close the trip?"]],
+  th: [["เด็กลงครบไหม?", "เด็กลงจากรถครบทุกคนไหมคะ"], ["ลงห้าคน", "มิ้นท์ แบงค์ ฟ้า ต้น และพลอย ลงจากรถแล้วค่ะ"], ["แจ้งเตือน", "แจ้งเตือนครูและผู้ปกครองด้วยค่ะ"],
+       ["คนสุดท้ายลง", "น้องเก้าลงแล้ว ลงครบทุกคนแล้วค่ะ"], ["รหัสผิด", "ฉันตรวจท้ายรถแล้ว รหัสคือ TAIL-GUESS123"], ["ปิดทริปได้ไหม?", "ปิดทริปได้ไหมคะ"]],
+};
+function lang() { let l = "en"; try { l = localStorage.getItem("bg-lang") || "en"; } catch {} return l === "th" ? "th" : "en"; }
+function fillChips() {
+  const l = lang(); $("lang").value = l;
+  $("chips").innerHTML = QUICK[l].map(([t, q]) => `<button class="btn sm" data-q="${esc(q)}">${esc(t)}</button>`).join("");
+  $("say").placeholder = l === "th" ? "คุยกับ Alexa+ …" : "Talk to Alexa+…";
+}
 // macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
-function voices() { try { return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en") && !NOVELTY.test(v.name)); } catch { return []; } }
+function voices() { const p = lang() === "th" ? "th" : "en"; try { return speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith(p) && !NOVELTY.test(v.name)); } catch { return []; } }
 function pickVoice() {
-  const vs = voices(); let saved = ""; try { saved = localStorage.getItem("bg-voice") || ""; } catch {}
+  const vs = voices(); let saved = ""; try { saved = localStorage.getItem("bg-voice-" + lang()) || ""; } catch {}
   return vs.find((v) => v.name === saved) || vs.find((v) => /premium|enhanced/i.test(v.name)) || vs.find((v) => /^(Samantha|Ava|Allison|Google US English)/.test(v.name)) || vs[0] || null;
 }
 function fillVoices() {
@@ -287,18 +292,20 @@ async function ask(text) {
   if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
   (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
   bub("bub a", j.reply); hist.push({ role: "assistant", content: j.memo || j.reply });
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = "en-US"; u.voice = pickVoice(); u.rate = 0.95; speechSynthesis.speak(u); } catch {}
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = lang() === "th" ? "th-TH" : "en-US"; u.voice = pickVoice(); u.rate = 0.95; speechSynthesis.speak(u); } catch {}
   refresh();
 }
 $("send").onclick = () => ask($("say").value);
 $("say").addEventListener("keydown", (e) => { if (e.key === "Enter") ask($("say").value); });
-document.querySelector(".chips").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) ask(b.dataset.q); });
+$("chips").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) ask(b.dataset.q); });
 $("mic").onclick = () => {
   const R = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!R) return alert("Speech recognition is not available in this browser. Type instead.");
-  const r = new R(); r.lang = "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
+  const r = new R(); r.lang = lang() === "th" ? "th-TH" : "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
 };
-$("voice").onchange = (e) => { try { localStorage.setItem("bg-voice", e.target.value); } catch {} };
+$("voice").onchange = (e) => { try { localStorage.setItem("bg-voice-" + lang(), e.target.value); } catch {} };
+$("lang").onchange = (e) => { try { localStorage.setItem("bg-lang", e.target.value); } catch {} fillChips(); fillVoices(); };
+fillChips();
 fillVoices();
 refresh();
 setInterval(refresh, 2000);
