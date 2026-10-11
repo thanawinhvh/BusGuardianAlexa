@@ -320,7 +320,16 @@ function fillChips() {
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
 function voices() { const p = lang() === "th" ? "th" : "en"; try { return speechSynthesis.getVoices().filter((v) => v.lang.replace("_", "-").startsWith(p) && !NOVELTY.test(v.name)); } catch { return []; } }
 // Voice choice per language, saved in this browser. "cloud:<speaker>" = BytePlus via /api/tts; "custom" = speaker ID typed below; "browser:<name>" = built-in voice.
-const CLOUD = [["th_female_bv568_neutral_uranus_bigtts", "☁ BytePlus · Thai female"], ["en_female_stokie_uranus_bigtts", "☁ BytePlus · English female (Stokie)"]];
+const CLOUD = [
+  ["th_female_bv568_neutral_uranus_bigtts", "☁ Mildred · นิ่ง สมดุล (default)"],
+  ["th_female_bv568_happy_uranus_bigtts", "☁ Zara · สดใส"],
+  ["th_female_bv568_suprise_uranus_bigtts", "☁ Phoebe · ร่าเริง มีชีวิตชีวา"],
+  ["th_female_bv568_sad_uranus_bigtts", "☁ Lydia · อ่อนโยน เศร้า"],
+  ["th_female_bv568_fear_uranus_bigtts", "☁ Iris · บอบบาง หวาดกลัว"],
+  ["th_female_bv568_angry_uranus_bigtts", "☁ Valeria · เข้มแข็ง เข้มข้น"],
+  ["th_female_bv568_hate_uranus_bigtts", "☁ Valentina · ดราม่า"],
+  ["en_female_stokie_uranus_bigtts", "☁ Stokie · English female (untested)"],
+];
 const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k) || ""; localStorage.setItem(k, v); } catch { return ""; } };
 function choice() { return ls("bg-voice-" + lang()) || "cloud:" + CLOUD[0][0]; }
 function browserVoice() {
