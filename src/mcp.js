@@ -101,6 +101,41 @@ export const TOOLS = [
   },
 ];
 
+// A parent session (bearer = a paired device token) sees ONE read-only tool. Roles are enforced here, in code:
+// a parent cannot record scans, close trips, send alerts or see other children, whatever the model is told.
+export const PARENT_INSTRUCTIONS = `Bus Guardian tells a parent where their own child is on the school vehicle.
+- You can only answer about this parent's child, using my_child_status. Call it before answering.
+- You cannot record scans, close trips, send alerts, or look at any other child. Say so briefly if asked.
+- If the status says an alert is open, tell the parent the school has raised it and the teacher is checking; do not guess more.
+- Say only what the status says. You do not know the destination, the route, or an arrival time: never mention them or guess.
+- Keep spoken answers short.`;
+
+export const PARENT_TOOLS = [{
+  name: "my_child_status",
+  title: "My child's status",
+  description: "Where this parent's child is right now: not boarded, on the vehicle, or got off, since when, and whether the school has an open alert. Read-only.",
+  inputSchema: { type: "object", properties: {} },
+  annotations: { readOnlyHint: true, openWorldHint: false },
+}];
+
+const ROLE = { staff: { tools: TOOLS, instructions: INSTRUCTIONS }, parent: { tools: PARENT_TOOLS, instructions: PARENT_INSTRUCTIONS } };
+export const roleOf = (ctx) => ROLE[ctx && ctx.role] || ROLE.staff;
+
+function callParentTool(state, ctx) {
+  const v = G.parentView(state, ctx.device);
+  if (v.err) return { result: fail(v.err) };
+  const where = { NOT_BOARDED: "not on the vehicle yet", ON_BOARD: "on the vehicle", GOT_OFF: "got off the vehicle" }[v.state];
+  return { result: ok({
+    child: v.child,
+    status: where || "no trip today",
+    since: v.since ? new Date(v.since).toISOString() : null,
+    trip: v.trip ? `${v.trip.name}${v.trip.vehicle ? " (" + v.trip.vehicle + ")" : ""}` : null,
+    trip_finished: !!(v.trip && v.trip.status === "FINISHED"),
+    school_alert_open: !!v.alert,
+    live_map: v.location ? "available on the Bus Guardian parent page while the child is on the vehicle" : "not available",
+  }) };
+}
+
 function text(obj) {
   return typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
 }
@@ -169,7 +204,7 @@ export function callTool(state, name, args = {}, now = Date.now()) {
 }
 
 // One JSON-RPC message in, { response | null, outbox, changed } out. Notifications get no response.
-export function handleMessage(state, msg, now = Date.now()) {
+export function handleMessage(state, msg, now = Date.now(), ctx = { role: "staff" }) {
   const isRequest = msg && msg.jsonrpc === "2.0" && typeof msg.method === "string" && msg.id !== undefined && msg.id !== null;
   const isNotification = msg && msg.jsonrpc === "2.0" && typeof msg.method === "string" && (msg.id === undefined || msg.id === null);
   if (isNotification) return { response: null, outbox: [], changed: false };
@@ -182,16 +217,16 @@ export function handleMessage(state, msg, now = Date.now()) {
   const p = msg.params || {};
   switch (msg.method) {
     case "initialize":
-      return reply({ protocolVersion: PROTOCOL_VERSION, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS });
+      return reply({ protocolVersion: PROTOCOL_VERSION, capabilities: { tools: { listChanged: false } }, serverInfo: SERVER_INFO, instructions: roleOf(ctx).instructions });
     case "ping":
       return reply({});
     case "tools/list":
-      return reply({ tools: TOOLS });
+      return reply({ tools: roleOf(ctx).tools });
     case "tools/call": {
-      if (!TOOLS.some((t) => t.name === p.name)) {
+      if (!roleOf(ctx).tools.some((t) => t.name === p.name)) {
         return { response: { jsonrpc: "2.0", id: msg.id, error: { code: -32602, message: `Unknown tool: ${p.name}` } }, outbox: [], changed: false };
       }
-      const r = callTool(state, p.name, p.arguments || {}, now);
+      const r = ctx.role === "parent" ? callParentTool(state, ctx) : callTool(state, p.name, p.arguments || {}, now);
       // Always persist: even get_trip_status can raise an overdue alert.
       return { response: { jsonrpc: "2.0", id: msg.id, result: r.result }, outbox: r.outbox || [], changed: true };
     }

@@ -3,19 +3,31 @@
 // Manual loop (not the SDK tool runner) because tools execute through our own MCP transport
 // inside the Durable Object.
 import Anthropic from "@anthropic-ai/sdk";
-import { TOOLS, INSTRUCTIONS, handleMessage } from "./mcp.js";
+import * as G from "./guard.js";
+import { TOOLS, INSTRUCTIONS, PARENT_TOOLS, PARENT_INSTRUCTIONS, handleMessage } from "./mcp.js";
 
-const SYSTEM = `You are Alexa+, a voice assistant for a school's teachers and van drivers, with the Bus Guardian skill.
-${INSTRUCTIONS}
-- Earlier assistant turns may end with "[tools used this turn: ...]". That is a record of what really ran; never repeat it in your reply and never contradict it.
+const STYLE = `- Earlier assistant turns may end with "[tools used this turn: ...]". That is a record of what really ran; never repeat it in your reply and never contradict it.
 - Answer in the language the person used (English or Thai). In Thai, sound like a polite woman: use ค่ะ/คะ, short spoken sentences, and write numbers as Thai words (หกคน, ห้าคน) because the voice reads digits badly. Keep child names exactly as on the roster (the roster may be in English: map Thai spellings such as มิ้นท์ → Mint, and pass the roster name to tools).
 - Your reply is spoken aloud: one or two short sentences, plain words, no markdown, no lists, no IDs.`;
 
-const tools = TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema }));
+const SYSTEM = `You are Alexa+, a voice assistant for a school's teachers and van drivers, with the Bus Guardian skill.
+${INSTRUCTIONS}
+${STYLE}`;
+
+const parentSystem = (child) => `You are Alexa+, speaking with the parent of ${child}.
+${PARENT_INSTRUCTIONS}
+- If asked about anything other than ${child}'s ride, say you can only help with that and suggest calling the school.
+${STYLE}`;
+
+const defs = (list) => list.map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema }));
 const MAX_STEPS = 8;
 
 // history: [{ role: "user" | "assistant", content: string }] — text turns only, appended in order.
-export async function runAgent({ apiKey, model, history, state }) {
+export async function runAgent({ apiKey, model, history, state, persona = "staff", device = "" }) {
+  const parent = persona === "parent";
+  const ctx = parent ? { role: "parent", device } : { role: "staff" };
+  const system = parent ? parentSystem(G.parentView(state, device).child) : SYSTEM;
+  const tools = defs(parent ? PARENT_TOOLS : TOOLS);
   const client = new Anthropic({ apiKey });
   const messages = history.map((m) => ({ role: m.role, content: String(m.content) }));
   const trace = [];
@@ -28,7 +40,7 @@ export async function runAgent({ apiKey, model, history, state }) {
       output_config: { effort: "low" }, // short spoken answers; raise if tool choice gets sloppy
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default", // a policy decline is retried server-side on a fallback model
-      system: SYSTEM,
+      system,
       tools,
       messages,
     });
@@ -53,7 +65,7 @@ export async function runAgent({ apiKey, model, history, state }) {
     const results = [];
     for (const call of calls) {
       const rpc = { jsonrpc: "2.0", id: call.id, method: "tools/call", params: { name: call.name, arguments: call.input || {} } };
-      const r = handleMessage(state, rpc);
+      const r = handleMessage(state, rpc, Date.now(), ctx);
       const result = r.response.result || { content: [{ type: "text", text: r.response.error?.message || "Tool error" }], isError: true };
       outbox.push(...r.outbox);
       trace.push({ tool: call.name, arguments: call.input || {}, isError: !!result.isError, result: result.structuredContent ?? null });

@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as G from "../src/guard.js";
-import { handleMessage, TOOLS, PROTOCOL_VERSION } from "../src/mcp.js";
+import { handleMessage, TOOLS, PROTOCOL_VERSION, PARENT_TOOLS } from "../src/mcp.js";
 
 let id = 0;
 const call = (state, name, args, now) => {
@@ -129,4 +129,28 @@ test("pairing codes never appear in the public trip view or tool output", () => 
   const codes = G.pairingCodes(s, s.trips[0]).map((c) => c.code);
   const everything = JSON.stringify([G.publicTrip(s.trips[0]), G.summary(s, s.trips[0]), call(s, "get_trip_status", {}), call(s, "list_trips", {})]);
   for (const c of codes) assert.ok(!everything.includes(c));
+});
+
+test("parent role: one read-only tool, own child only, no staff tools, no coordinates", () => {
+  const s = demo();
+  const kao = G.pairingCodes(s, s.trips[0]).find((c) => c.name === "Nong Kao");
+  const { device } = G.pairDevice(s, kao.code);
+  const ctx = { role: "parent", device };
+  const rpc = (method, params) => handleMessage(s, { jsonrpc: "2.0", id: ++id, method, params }, Date.now(), ctx).response;
+
+  assert.deepEqual(rpc("tools/list").result.tools.map((t) => t.name), PARENT_TOOLS.map((t) => t.name));
+  for (const name of ["record_scan", "finish_trip", "alert_teacher_and_parents", "get_trip_status", "confirm_back_seat_check"]) {
+    assert.equal(rpc("tools/call", { name, arguments: { child_name: "Mint", event: "boarded" } }).error.code, -32602, name + " must be refused for a parent");
+  }
+  assert.equal(s.scans.length, 0, "a parent can never write");
+
+  call(s, "record_scan", { child_name: "Nong Kao", event: "boarded" });
+  call(s, "record_scan", { child_name: "Mint", event: "boarded" });
+  s.location = { lat: 13.75, lng: 100.5, speed: 5, acc: 5, at: Date.now(), trail: [[13.75, 100.5]] };
+  const out = rpc("tools/call", { name: "my_child_status", arguments: {} }).result;
+  assert.equal(out.structuredContent.child, "Nong Kao");
+  assert.equal(out.structuredContent.status, "on the vehicle");
+  const dump = JSON.stringify(out);
+  assert.ok(!dump.includes("Mint") && !dump.includes("13.75") && !dump.includes("TAIL-"), "no other child, no coordinates, no back-seat code");
+  assert.equal(handleMessage(s, { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "my_child_status" } }).response.error.code, -32602, "staff role has no parent tool");
 });

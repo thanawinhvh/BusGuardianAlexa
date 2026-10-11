@@ -58,6 +58,11 @@ a.u{color:var(--mut);font-size:13px;text-align:center;display:block;margin-top:6
       <p class="muted" id="hint" style="margin:8px 0 0"></p>
       <div id="map" hidden></div>
     </div>
+    <div class="card"><b id="ask-t"></b>
+      <div id="chips" style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0"></div>
+      <div id="chat" style="display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto"></div>
+      <div style="display:flex;gap:8px;margin-top:10px"><input id="say" style="font:inherit;font-size:16px;letter-spacing:0;text-align:left;text-transform:none;margin:0;padding:10px 12px;border-radius:12px;flex:1;min-width:0"><button class="btn" id="send" style="width:auto;padding:10px 16px;font-size:15px"></button><button class="btn ghost" id="mic" style="width:auto;padding:10px 12px;font-size:15px">🎤</button></div>
+    </div>
     <div class="card"><b id="tl"></b><ul id="timeline"></ul></div>
     <a class="u" id="unlink"></a>
   </div>
@@ -73,13 +78,13 @@ const T = {
     who: "You are the parent of", trip: (n, v) => `${n}${v ? " · " + v : ""}`, none: "Not on the van yet", on: "On the van", off: "Got off safely",
     sNone: "Waiting for boarding", sOn: (t) => `Since ${t}`, sOff: (t) => `At ${t}`, alert: "The school has raised an alert and the teacher is checking now.",
     track: "Track the bus", hide: "Hide map", hintOn: "Live position shows only while your child is on the van.", hintOff: "Tracking is available while your child is on the van.",
-    tl: "Today", board: "Boarded", alight: "Got off", unlink: "Not your child? Unlink this phone", finished: "Trip finished", empty: "No trip yet",
+    askT: "Ask Alexa+", ph: "Ask about your child…", send: "Send", q1: "Is my child off the van yet?", q2: "Where is my child now?", err: "Alexa could not answer right now.", tl: "Today", board: "Boarded", alight: "Got off", unlink: "Not your child? Unlink this phone", finished: "Trip finished", empty: "No trip yet",
     spd: (k, a) => `${k != null ? k + " km/h · " : ""}updated ${a} s ago` },
   th: { tag: "สำหรับผู้ปกครอง", t1: "ผูกบัญชีลูกของคุณ", t2: "กรอกรหัส 6 ตัวที่โรงเรียนให้ไว้ ทำครั้งเดียวบนมือถือเครื่องนี้ ต่อไปเปิดมาก็ใช้ได้เลย", go: "ผูกบัญชี", bad: "รหัสนี้ไม่ถูกต้อง",
     who: "คุณคือผู้ปกครองของ", trip: (n, v) => `${n}${v ? " · " + v : ""}`, none: "ยังไม่ได้ขึ้นรถ", on: "อยู่บนรถ", off: "ลงรถอย่างปลอดภัยแล้ว",
     sNone: "รอเด็กขึ้นรถ", sOn: (t) => `ตั้งแต่ ${t}`, sOff: (t) => `เวลา ${t}`, alert: "โรงเรียนยกแจ้งเตือนแล้ว ครูกำลังตรวจสอบอยู่ค่ะ",
     track: "ติดตามรถ", hide: "ซ่อนแผนที่", hintOn: "ตำแหน่งสดจะแสดงเฉพาะตอนที่ลูกอยู่บนรถ", hintOff: "ติดตามรถได้ตอนที่ลูกอยู่บนรถ",
-    tl: "วันนี้", board: "ขึ้นรถ", alight: "ลงรถ", unlink: "ไม่ใช่ลูกของคุณ? ยกเลิกการผูกมือถือเครื่องนี้", finished: "จบทริปแล้ว", empty: "ยังไม่มีทริป",
+    askT: "ถาม Alexa+", ph: "ถามเรื่องลูกของคุณ…", send: "ส่ง", q1: "ลูกฉันลงรถหรือยังคะ", q2: "ตอนนี้ลูกอยู่ไหนคะ", err: "ตอนนี้ Alexa ตอบไม่ได้ค่ะ", tl: "วันนี้", board: "ขึ้นรถ", alight: "ลงรถ", unlink: "ไม่ใช่ลูกของคุณ? ยกเลิกการผูกมือถือเครื่องนี้", finished: "จบทริปแล้ว", empty: "ยังไม่มีทริป",
     spd: (k, a) => `${k != null ? k + " กม./ชม. · " : ""}อัปเดต ${a} วินาทีที่แล้ว` },
 };
 const t = (k, ...a) => { const v = T[lang()][k]; return typeof v === "function" ? v(...a) : v; };
@@ -90,7 +95,8 @@ let device = ls("bg-device"), showMap = false, map, marker, line, last = null, t
 function labels() {
   document.documentElement.lang = lang(); $("lang").value = lang();
   $("tag").textContent = t("tag"); $("t1").textContent = t("t1"); $("t2").textContent = t("t2"); $("go").textContent = t("go");
-  $("who").textContent = t("who"); $("tl").textContent = t("tl"); $("unlink").textContent = t("unlink");
+  $("who").textContent = t("who"); $("ask-t").textContent = t("askT"); $("say").placeholder = t("ph"); $("send").textContent = t("send");
+  $("chips").innerHTML = ["q1", "q2"].map((k) => `<button class="btn ghost" data-q="${esc(t(k))}" style="width:auto;padding:8px 12px;font-size:14px">${esc(t(k))}</button>`).join(""); $("tl").textContent = t("tl"); $("unlink").textContent = t("unlink");
   if (last) draw(last);
 }
 
@@ -148,6 +154,24 @@ $("unlink").onclick = async () => {
   device = ""; ls("bg-device", null); last = null; showMap = false; $("home").hidden = true; $("pair").hidden = false;
 };
 $("lang").onchange = (e) => { ls("bg-lang", e.target.value); labels(); };
+
+// Alexa+ in the parent persona: the server gives this phone ONE read-only tool about its own child.
+const hist = [];
+const bub = (me, txt) => { const d = document.createElement("div"); d.textContent = txt; d.style.cssText = `padding:9px 13px;border-radius:14px;max-width:90%;align-self:${me ? "flex-end" : "flex-start"};background:${me ? "var(--acc)" : "var(--bg)"};color:${me ? "var(--acc-fg)" : "inherit"}`; $("chat").appendChild(d); $("chat").scrollTop = 1e9; return d; };
+async function ask(text) {
+  text = (text || "").trim(); if (!text || !device) return;
+  $("say").value = ""; bub(true, text); hist.push({ role: "user", content: text });
+  const wait = bub(false, "…");
+  const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ persona: "parent", device, lang: lang(), messages: hist }) });
+  const j = await r.json().catch(() => ({})); wait.remove();
+  if (!r.ok) { bub(false, j.error || t("err")); hist.pop(); return; }
+  bub(false, j.reply); hist.push({ role: "assistant", content: j.memo || j.reply });
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(j.reply); u.lang = lang() === "th" ? "th-TH" : "en-US"; speechSynthesis.speak(u); } catch {}
+}
+$("send").onclick = () => ask($("say").value);
+$("say").addEventListener("keydown", (e) => { if (e.key === "Enter") ask($("say").value); });
+$("chips").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) ask(b.dataset.q); });
+$("mic").onclick = () => { const R = window.SpeechRecognition || window.webkitSpeechRecognition; if (!R) return; const r = new R(); r.lang = lang() === "th" ? "th-TH" : "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start(); };
 labels(); tick(); timer = setInterval(tick, 3000);
 </script>
 </body>

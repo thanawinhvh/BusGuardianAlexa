@@ -11,6 +11,9 @@ const SUPPORTED_VERSIONS = [PROTOCOL_VERSION, "2025-06-18", "2025-03-26"];
 const json = (obj, status = 200, headers = {}) =>
   new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json", ...headers } });
 
+const cleanHistory = (body) => (Array.isArray(body.messages) ? body.messages : []).slice(-12)
+  .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string").map((m) => ({ role: m.role, content: m.content.slice(0, 1000) }));
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -122,6 +125,23 @@ export class GuardStore extends DurableObject {
       return json({ ok: true });
     }
 
+    if (path === "/api/chat" && request.method === "POST" && body.persona === "parent") {
+      const device = String(body.device || "");
+      const state = await this.load();
+      if (G.parentView(state, device).err) return json({ error: "Link your child first." }, 401);
+      if (!this.env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY is not set on the server." }, 500);
+      const now = Date.now(); this.rl ||= {};
+      this.rl[device] = (this.rl[device] || []).filter((t) => now - t < 3600_000);
+      if (this.rl[device].length >= 30) return json({ error: "Too many questions this hour. Try again later." }, 429);
+      this.rl[device].push(now);
+      const history = cleanHistory(body);
+      if (!history.length || history[history.length - 1].role !== "user") return json({ error: "Send the user's message last." }, 400);
+      try {
+        const r = await runAgent({ apiKey: this.env.ANTHROPIC_API_KEY, model: this.env.AGENT_MODEL, history, state, persona: "parent", device });
+        return json({ reply: r.reply, memo: r.memo || r.reply });   // read-only role: nothing to save, no tool trace for parents
+      } catch (e) { console.log("parent agent failed", e.message); return json({ error: "Alexa could not answer right now." }, 502); }
+    }
+
     if (!this.isAdmin(request, url, body)) return json({ error: "Admin key required." }, 401);
 
     // Language for alerts to teacher/parents (also used by the overdue-check cron). Dashboard sends it with chat/demo/lang.
@@ -179,8 +199,7 @@ export class GuardStore extends DurableObject {
     // Simulated Alexa+: Claude chooses tools and every call goes through the MCP handler.
     if (path === "/api/chat" && request.method === "POST") {
       if (!this.env.ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY is not set on the server." }, 500);
-      const history = (Array.isArray(body.messages) ? body.messages : []).slice(-12)
-        .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
+      const history = cleanHistory(body);
       if (!history.length || history[history.length - 1].role !== "user") return json({ error: "Send the user's message last." }, 400);
       const state = await this.load(); await setLang(state);
       try {
@@ -251,9 +270,6 @@ export class GuardStore extends DurableObject {
     if (origin && origin !== new URL(request.url).origin && !allowed.includes(origin)) {
       return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Origin not allowed" } }, 403);
     }
-    if (env.MCP_TOKEN && request.headers.get("authorization") !== `Bearer ${env.MCP_TOKEN}`) {
-      return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized" } }, 401, { "www-authenticate": "Bearer" });
-    }
     const pv = request.headers.get("mcp-protocol-version");
     if (pv && !SUPPORTED_VERSIONS.includes(pv)) {
       return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: `Unsupported MCP-Protocol-Version: ${pv}` } }, 400);
@@ -263,8 +279,16 @@ export class GuardStore extends DurableObject {
     try { msg = await request.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400); }
     if (Array.isArray(msg)) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "Batching is not supported" } }, 400);
 
+    // Role comes from the bearer token: a paired parent device = read-only parent tools; otherwise staff
+    // (which needs MCP_TOKEN when that secret is set).
     const state = await this.load();
-    const r = handleMessage(state, msg);
+    const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
+    let ctx = { role: "staff" };
+    if (bearer && state.devices && state.devices[bearer]) ctx = { role: "parent", device: bearer };
+    else if (env.MCP_TOKEN && bearer !== env.MCP_TOKEN) {
+      return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Unauthorized" } }, 401, { "www-authenticate": "Bearer" });
+    }
+    const r = handleMessage(state, msg, Date.now(), ctx);
     if (r.changed) await this.save(state);
     this.deliver(r.outbox);
     if (!r.response) return new Response(null, { status: 202 });
