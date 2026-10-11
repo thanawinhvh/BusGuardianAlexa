@@ -138,7 +138,9 @@ $("card").onclick = async () => {
   $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
 };
 // Clearest English voice available; the dropdown lets you override (saved per browser).
-function voices() { try { return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en")); } catch { return []; } }
+// macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
+const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
+function voices() { try { return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en") && !NOVELTY.test(v.name)); } catch { return []; } }
 function pickVoice() {
   const vs = voices(); let saved = ""; try { saved = localStorage.getItem("bg-voice") || ""; } catch {}
   return vs.find((v) => v.name === saved) || vs.find((v) => /premium|enhanced/i.test(v.name)) || vs.find((v) => /^(Samantha|Ava|Allison|Google US English)/.test(v.name)) || vs[0] || null;
