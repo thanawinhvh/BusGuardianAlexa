@@ -5,79 +5,165 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bus Guardian</title>
 <style>
-:root{--bg:#f5f4f0;--card:#fff;--fg:#1c1c1e;--mut:#6b6b70;--line:#e2e0da;--ok:#1f8f4e;--warn:#c47a00;--bad:#c62828;--acc:#1d4ed8}
-@media (prefers-color-scheme:dark){:root{--bg:#121214;--card:#1c1c1f;--fg:#f2f2f2;--mut:#9a9aa0;--line:#2c2c30;--acc:#7aa2ff}}
+:root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--line:#e3e8ee;--side:#fff;
+--ok:#16a34a;--ok-bg:#e8f7ee;--warn:#d97706;--warn-bg:#fdf3e1;--bad:#dc2626;--bad-bg:#fde8e8;--acc:#16a34a;--acc-fg:#fff;
+--shadow:0 1px 2px rgba(15,31,61,.05),0 8px 24px rgba(15,31,61,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1412;--card:#16201d;--fg:#eaf1ee;--mut:#8ea39b;--line:#25332e;--side:#121b18;
+--ok:#3ccf74;--ok-bg:#12301f;--warn:#f0a63a;--warn-bg:#33270f;--bad:#ff6b6b;--bad-bg:#3a1717;--acc:#2fbf63;--acc-fg:#04130a;
+--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,-apple-system,sans-serif}
-main{max-width:760px;margin:auto;padding:20px 16px 60px}
-h1{font-size:24px;margin:0}
-.sub{color:var(--mut);margin:2px 0 18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
-.big{display:flex;gap:10px;flex-wrap:wrap}
-.stat{flex:1;min-width:110px;border:1px solid var(--line);border-radius:10px;padding:10px}
-.stat b{display:block;font-size:28px}
-.stat span{color:var(--mut);font-size:13px}
-.banner{border-radius:12px;padding:14px 16px;font-weight:600;margin-bottom:14px}
-.banner.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
-.banner.warn{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
-.banner.bad{background:color-mix(in srgb,var(--bad) 15%,transparent);color:var(--bad)}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+.side{background:var(--side);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px}
+.logo{width:42px;height:42px;border-radius:12px;background:var(--acc);color:var(--acc-fg);display:grid;place-items:center}
+.logo svg{width:24px;height:24px}
+.brand b{display:block;font-size:18px;line-height:1.15}.brand small{color:var(--mut);font-size:12px}
+nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;color:var(--fg);text-decoration:none;font-weight:500;margin-bottom:4px}
+nav a:hover{background:var(--bg)}nav a.on{background:var(--ok-bg);color:var(--ok)}
+nav .badge{margin-left:auto;background:var(--warn);color:#fff;font-size:12px;font-weight:700;border-radius:99px;padding:0 8px}
+.who{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--bg);font-size:13px}
+.who b{display:block}.who span{color:var(--mut)}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
+main{padding:24px 28px 60px;min-width:0}
+.top{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.top h1{margin:0;font-size:30px;line-height:1.1}.top p{margin:4px 0 0;color:var(--mut)}
+.pills{margin-left:auto;display:flex;gap:10px}
+.pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 14px;font-weight:600;box-shadow:var(--shadow)}
+.pill.live{color:var(--ok)}.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px;margin-bottom:18px}
+.card h2{margin:0;font-size:19px}.card .sub{color:var(--mut);font-size:13px;margin:2px 0 12px}
+.banner{display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px 18px;margin-bottom:18px;border:1px solid}
+.banner .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none}
+.banner b{display:block;font-size:17px}.banner span{font-size:14px}
+.banner.ok{background:var(--ok-bg);border-color:color-mix(in srgb,var(--ok) 35%,transparent);color:var(--ok)}.banner.ok .ic{background:var(--ok)}
+.banner.warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 35%,transparent);color:var(--warn)}.banner.warn .ic{background:var(--warn)}
+.banner.bad{background:var(--bad-bg);border-color:color-mix(in srgb,var(--bad) 40%,transparent);color:var(--bad)}.banner.bad .ic{background:var(--bad)}
+.banner div:nth-child(2){flex:1;min-width:0}.banner span{color:var(--fg);opacity:.85}
+.btn{font:inherit;font-weight:600;font-size:14px;padding:9px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--mut)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-fg)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{padding:6px 12px;font-size:13px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.stat .h{display:flex;align-items:center;gap:10px;font-weight:600}
+.stat .i{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.stat strong{display:block;font-size:40px;line-height:1.1;margin:10px 0 2px}.stat small{color:var(--mut)}
+.status{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.status .ic{width:44px;height:44px;border-radius:12px;background:var(--ok);color:var(--acc-fg);display:grid;place-items:center}
+.status h3{margin:0;font-size:18px;color:var(--ok)}.status small{color:var(--mut)}
+.status .bar{flex:1;min-width:140px}.track{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px}
+.track i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .4s}
+.next{margin-left:auto;background:var(--warn-bg);color:var(--warn);font-weight:700;font-size:13px;border-radius:99px;padding:6px 12px}
+.next.ok{background:var(--ok-bg);color:var(--ok)}
 table{width:100%;border-collapse:collapse}
-td{padding:8px 4px;border-top:1px solid var(--line);vertical-align:middle}
-.chip{font-size:13px;padding:2px 8px;border-radius:99px;white-space:nowrap}
-.chip.on{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
-.chip.off{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
-.chip.none{background:var(--line);color:var(--mut)}
-button{font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
-button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
-.right{text-align:right;white-space:nowrap}
-.msg{border-top:1px solid var(--line);padding:8px 0;font-size:14px}
-.msg small{color:var(--mut)}
+th{text-align:left;font-size:12px;letter-spacing:.04em;color:var(--mut);padding:8px 6px;background:var(--bg)}
+th:first-child{border-radius:10px 0 0 10px}th:last-child{border-radius:0 10px 10px 0}
+td{padding:11px 6px;border-top:1px solid var(--line);vertical-align:middle}
+.rn{display:flex;align-items:center;gap:12px}.rn b{display:block}.rn small{color:var(--mut)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.chip.on{background:var(--warn-bg);color:var(--warn)}.chip.off{background:var(--ok-bg);color:var(--ok)}.chip.none{background:var(--bg);color:var(--mut)}
+.acts{white-space:nowrap;text-align:right}
+.msg{display:flex;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.msg:first-of-type{border-top:0}.msg .t{min-width:0;font-size:14px}.msg small{color:var(--mut)}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-top:4px;background:var(--bad-bg);color:var(--bad)}
+#map{height:260px;border-radius:12px;margin-top:10px;z-index:0}
+@media (prefers-color-scheme:dark){#map .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
+.side-col{position:sticky;top:20px}
 .muted{color:var(--mut);font-size:14px}
-.tail{font:700 28px ui-monospace,Menlo,monospace;letter-spacing:2px}
-.chat{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:10px 0}.bub{padding:8px 12px;border-radius:12px;max-width:85%}.bub.u{align-self:flex-end;background:var(--acc);color:#fff}.bub.a{align-self:flex-start;background:var(--line)}.tool{font:12px ui-monospace,Menlo,monospace;color:var(--mut);align-self:flex-start}.tool.err{color:var(--bad)}.row{display:flex;gap:8px}.row input{flex:1;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}.chips button{margin:2px 4px 2px 0;font-size:13px}
+.chat{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.bub{padding:9px 13px;border-radius:14px;max-width:88%}
+.bub.u{align-self:flex-end;background:var(--acc);color:var(--acc-fg)}.bub.a{align-self:flex-start;background:var(--bg)}
+.tool{font:12px ui-monospace,Menlo,monospace;color:var(--mut);align-self:flex-start;word-break:break-word}.tool.err{color:var(--bad);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.row{display:flex;gap:8px}.row input{flex:1;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-width:0}
+select{font:inherit;padding:5px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);max-width:60%}
+.tail{font:700 30px ui-monospace,Menlo,monospace;letter-spacing:3px;margin-top:8px}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}.side-col{position:static}}
+@media(max-width:820px){.app{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;align-items:center;gap:8px;overflow-x:auto;padding:10px}
+.brand{padding:0 8px 0 0}.brand small,.who{display:none}nav{display:flex;gap:4px}nav a{margin:0;white-space:nowrap;padding:8px 10px}
+main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{font-size:24px}.pills{margin-left:0}}
 </style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 </head>
 <body>
-<main>
-  <h1>🚌 Bus Guardian</h1>
-  <p class="sub">No child left on the vehicle. Driver scans + Alexa+ agent, same safety rules.</p>
+<div class="app">
+<aside class="side">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg></div><div><b>Bus Guardian</b><small>No child left behind</small></div></div>
+  <nav>
+    <a href="#dash" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
+    <a href="#riders"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.2 2.3 3.5 5.2"/></svg>Riders</a>
+    <a href="#alerts"><svg viewBox="0 0 24 24"><path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/></svg>Alerts<span class="badge" id="nbadge" hidden></span></a>
+    <a href="#alexa"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Alexa+</a>
+    <a href="#admin"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.3-1.3L14 3h-4l-.3 2.5a7 7 0 0 0-2.3 1.3l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.6l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.3 1.3L10 21h4l.3-2.5a7 7 0 0 0 2.3-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>Admin</a>
+  </nav>
+  <div class="who"><div class="av" id="whoav" style="background:var(--acc)">–</div><div><b id="whoname">No trip</b><span id="whotrip">Press Reset demo trip</span></div></div>
+</aside>
 
-  <div id="banner"></div>
-  <div class="card"><div class="big" id="stats"></div><p class="muted" id="tripline"></p></div>
-
-  <div class="card">
-    <strong>Riders</strong> <span class="muted">— driver taps simulate QR scans</span>
-    <table id="riders"></table>
+<main id="dash">
+  <div class="top">
+    <div><h1>Dashboard</h1><p id="tripline">Loading…</p></div>
+    <div class="pills"><div class="pill" id="today"></div><div class="pill live"><span class="dot"></span>Live</div></div>
   </div>
 
-  <div class="card">
-    <strong>Alerts sent</strong> <span class="muted">— teacher and parents</span>
-    <div id="outbox"><p class="muted">None yet.</p></div>
-  </div>
+  <div class="grid">
+  <div>
+    <div id="banner"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card status" id="status"></div>
 
-  <div class="card">
-    <strong>🔊 Alexa+ (simulated)</strong> <span class="muted">— Claude calls the same MCP tools a real Alexa+ agent would</span>
-    <div class="chips">
-      <button data-q="Did every kid get off the van?">Did every kid get off?</button>
-      <button data-q="Mint, Bank, Fah, Ton and Ploy got off the van.">Five got off</button>
-      <button data-q="Alert the teacher and parents.">Alert</button>
-      <button data-q="Nong Kao got off. Everyone is off now.">Last one off</button>
-      <button data-q="I checked the back seat. The code is TAIL-GUESS123.">Wrong code</button>
-      <button data-q="Can we close the trip?">Close trip?</button>
+    <div class="card" id="locCard">
+      <h2>Live location</h2>
+      <p class="sub" id="locSub">Open <b>/driver.html</b> on the driver's phone and tap Start. Real GPS from that phone, nothing simulated.</p>
+      <div id="map" hidden></div>
     </div>
-    <div class="chat" id="chat"></div>
-    <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="primary" id="send">Send</button><button id="mic" title="Speak">🎤</button></div>
-    <p class="muted">Voice: <select id="voice"></select></p>
+
+    <div class="card" id="riders">
+      <h2>Riders</h2><p class="sub">Driver taps simulate QR scans</p>
+      <table><thead><tr><th>PASSENGER</th><th>STATUS</th><th style="text-align:right">ACTIONS</th></tr></thead><tbody id="rows"></tbody></table>
+    </div>
+
+    <div class="card" id="alexa">
+      <h2>🔊 Alexa+ <span class="muted">(simulated)</span></h2>
+      <p class="sub">Claude calls the same MCP tools a real Alexa+ agent would. Red lines are the server saying no.</p>
+      <div class="chips">
+        <button class="btn sm" data-q="Did every kid get off the van?">Did every kid get off?</button>
+        <button class="btn sm" data-q="Mint, Bank, Fah, Ton and Ploy got off the van.">Five got off</button>
+        <button class="btn sm" data-q="Alert the teacher and parents.">Alert</button>
+        <button class="btn sm" data-q="Nong Kao got off. Everyone is off now.">Last one off</button>
+        <button class="btn sm" data-q="I checked the back seat. The code is TAIL-GUESS123.">Wrong code</button>
+        <button class="btn sm" data-q="Can we close the trip?">Close trip?</button>
+      </div>
+      <div class="chat" id="chat"></div>
+      <div class="row"><input id="say" placeholder="Talk to Alexa+…" autocomplete="off"><button class="btn primary" id="send">Send</button><button class="btn" id="mic" title="Speak">🎤</button></div>
+      <p class="muted">Voice: <select id="voice"></select></p>
+    </div>
+
+    <div class="card" id="admin">
+      <h2>Admin</h2>
+      <p class="sub">The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.</p>
+      <button class="btn danger" id="reset">Reset demo trip</button>
+      <button class="btn" id="card">Show back-seat code card</button>
+      <div id="tail"></div>
+    </div>
   </div>
 
-  <div class="card">
-    <strong>Admin</strong>
-    <p class="muted">The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.</p>
-    <button id="reset">Reset demo trip</button>
-    <button id="card">Show back-seat code card</button>
-    <div id="tail"></div>
+  <aside class="side-col" id="alerts">
+    <div class="card">
+      <h2>Alerts sent</h2><p class="sub">Teacher and parents</p>
+      <div id="outbox"><p class="muted">None yet.</p></div>
+    </div>
+  </aside>
   </div>
 </main>
+</div>
+
 <script>
 const $ = (id) => document.getElementById(id);
 let trip = null;
@@ -95,40 +181,78 @@ async function api(path, body) {
   return j;
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const COLORS = ["#16a34a", "#d97706", "#2563eb", "#9333ea", "#0891b2", "#db2777"];
+const av = (name, i) => `<div class="av" style="background:${COLORS[i % COLORS.length]}">${esc((name || "?")[0].toUpperCase())}</div>`;
+const I = {
+  warn: '<svg viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18.5v.01"/></svg>',
+  ok: '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  users: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/></svg>',
+  bus: '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="3"/><path d="M4 12h16M8 21v-3M16 21v-3"/></svg>',
+  down: '<svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 8v9H8"/></svg>',
+  person: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>',
+};
 
 function render(data) {
   trip = (data.trips || []).find((t) => t.status === "ACTIVE") || (data.trips || [])[0];
-  if (!trip) { $("banner").innerHTML = '<div class="banner warn">No trip yet. Press "Reset demo trip".</div>'; return; }
-  const s = trip.summary;
-  const alerts = s.open_alerts || [];
-  let cls = "ok", msg = `All ${s.got_off} children off and back seat checked.`;
-  if (trip.status === "FINISHED") msg = "Trip closed safely.";
-  else if (alerts.length) { cls = "bad"; msg = "⚠️ " + alerts[alerts.length - 1].text; }
-  else if (s.still_on_board.length) { cls = "warn"; msg = `On board: ${s.still_on_board.join(", ")}`; }
-  else if (s.boarded && s.back_seat_check === "not done") { cls = "warn"; msg = "Everyone is off. Back-seat check still needed."; }
-  else if (!s.boarded) { cls = "warn"; msg = "Waiting for boarding."; }
-  $("banner").innerHTML = `<div class="banner ${cls}">${esc(msg)}</div>`;
-  $("stats").innerHTML = [["Riders", s.riders_total], ["Boarded", s.boarded], ["On board", s.still_on_board.length], ["Got off", s.got_off]]
-    .map(([l, v]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
-  $("tripline").textContent = `${trip.name} · ${trip.plate} · teacher ${trip.teacher} · back-seat check: ${s.back_seat_check} · ${trip.status}`;
-  $("riders").innerHTML = trip.riders.map((r) => {
-    const st = trip.lastScan[r.id];
-    const chip = st === "BOARD" ? '<span class="chip on">on board</span>' : st === "ALIGHT" ? '<span class="chip off">got off</span>' : '<span class="chip none">not boarded</span>';
+  $("today").textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (!trip) {
+    $("banner").innerHTML = `<div class="banner warn"><div class="ic">${I.warn}</div><div><b>No trip yet</b><span>Press "Reset demo trip" in Admin.</span></div></div>`;
+    $("stats").innerHTML = $("status").innerHTML = $("rows").innerHTML = ""; $("tripline").textContent = "No active trip";
+    return;
+  }
+  const s = trip.summary, alerts = s.open_alerts || [];
+  let cls = "ok", title = "All clear", msg = `All ${s.got_off} children off and the back seat checked.`, ask = false;
+  if (trip.status === "FINISHED") { title = "Trip closed safely"; msg = "Every child who boarded got off, and the back seat was checked."; }
+  else if (alerts.length) { cls = "bad"; title = "Urgent safety alert"; msg = alerts[alerts.length - 1].text; ask = true; }
+  else if (s.still_on_board.length) { cls = "warn"; title = "Children on board"; msg = `On board: ${s.still_on_board.join(", ")}`; }
+  else if (s.boarded && s.back_seat_check === "not done") { cls = "warn"; title = "Back-seat check needed"; msg = "Everyone is off. Someone must walk to the back seat and read the code."; ask = true; }
+  else if (!s.boarded) { cls = "warn"; title = "Waiting for boarding"; msg = "Nobody has been scanned on yet."; }
+  $("banner").innerHTML = `<div class="banner ${cls}"><div class="ic">${cls === "ok" ? I.ok : I.warn}</div><div><b>${esc(title)}</b><span>${esc(msg)}</span></div>${ask ? '<button class="btn primary" id="askalexa">Ask Alexa+</button>' : ""}</div>`;
+  const st = [["Riders", s.riders_total, "Total passengers", "#16a34a", I.users], ["Boarded", s.boarded, "Scanned on", "#16a34a", I.ok],
+    ["On board", s.still_on_board.length, "Currently on vehicle", "#d97706", I.person], ["Got off", s.got_off, s.got_off ? "Scanned off" : "None yet", "#64708a", I.down]];
+  $("stats").innerHTML = st.map(([l, v, sub, c, ic]) => `<div class="stat"><div class="h"><div class="i" style="background:${c}">${ic}</div>${l}</div><strong>${v}</strong><small>${sub}</small></div>`).join("");
+  const pct = s.boarded ? Math.round((s.got_off / s.boarded) * 100) : 0;
+  const next = trip.status === "FINISHED" ? ["Done", "ok"] : s.still_on_board.length ? ["Next: everyone gets off", ""] : s.boarded && s.back_seat_check === "not done" ? ["Next: back-seat check", ""] : s.boarded ? ["Next: close trip", "ok"] : ["Next: boarding", ""];
+  $("status").innerHTML = `<div class="ic">${I.bus}</div><div><h3>Trip Status: ${esc(trip.status)}</h3><small>${esc(trip.name)} · ${esc(trip.plate)} · Driver ${esc(trip.driver || "–")}</small></div>
+    <div class="bar"><small>${s.got_off} of ${s.boarded} off · back-seat check: ${esc(s.back_seat_check)}</small><div class="track"><i style="width:${pct}%"></i></div></div><span class="next ${next[1]}">${next[0]}</span>`;
+  $("tripline").textContent = `${trip.name} · ${trip.plate} · teacher ${trip.teacher}`;
+  $("whoav").textContent = (trip.teacher || "?")[0]; $("whoname").textContent = trip.teacher || "–"; $("whotrip").textContent = `${trip.name} · ${trip.status}`;
+  $("rows").innerHTML = trip.riders.map((r, i) => {
+    const x = trip.lastScan[r.id];
+    const chip = x === "BOARD" ? `<span class="chip on">● On board</span>` : x === "ALIGHT" ? `<span class="chip off">✓ Got off</span>` : `<span class="chip none">Not boarded</span>`;
     const live = trip.status === "ACTIVE";
-    return `<tr><td>${esc(r.name)}</td><td>${chip}</td><td class="right">${live ? `<button data-r="${r.id}" data-t="BOARD">Board</button> <button data-r="${r.id}" data-t="ALIGHT">Off</button>` : ""}</td></tr>`;
+    return `<tr><td><div class="rn">${av(r.name, i)}<div><b>${esc(r.name)}</b><small>${esc(r.parent || "")}</small></div></div></td><td>${chip}</td>
+      <td class="acts">${live ? `<button class="btn sm primary" data-r="${r.id}" data-t="BOARD">Board</button> <button class="btn sm" data-r="${r.id}" data-t="ALIGHT">Off</button>` : ""}</td></tr>`;
   }).join("");
   const out = (data.outbox || []).filter((m) => m.tripId === trip.id);
-  $("outbox").innerHTML = out.length ? out.map((m) => `<div class="msg"><b>→ ${esc(m.to)}</b> <small>${esc(m.role)} · ${new Date(m.at).toLocaleTimeString()}</small><br>${esc(m.text)}</div>`).join("") : '<p class="muted">None yet.</p>';
+  $("nbadge").hidden = !out.length; $("nbadge").textContent = out.length;
+  $("outbox").innerHTML = out.length ? out.map((m, i) => `<div class="msg">${av(m.to, i)}<div class="t"><b>${esc(m.to)}</b> <small>${esc(m.role)} · ${new Date(m.at).toLocaleTimeString()}</small><br>${esc(m.text)}${/urgent|critical|overdue/i.test(m.text) ? '<br><span class="tag">URGENT</span>' : ""}</div></div>`).join("") : '<p class="muted">None yet.</p>';
+}
+
+let map, marker, line;
+function renderMap(loc) {
+  const el = $("map");
+  if (!loc || !window.L) { el.hidden = true; $("locSub").innerHTML = "Open <b>/driver.html</b> on the driver's phone and tap Start. Real GPS from that phone, nothing simulated."; return; }
+  el.hidden = false;
+  const ll = [loc.lat, loc.lng], age = Math.round((Date.now() - loc.at) / 1000);
+  if (!map) {
+    map = L.map("map").setView(ll, 15);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    marker = L.marker(ll).addTo(map); line = L.polyline(loc.trail || [], { color: "#16a34a", weight: 4 }).addTo(map);
+  }
+  marker.setLatLng(ll); line.setLatLngs(loc.trail || []); map.panTo(ll);
+  $("locSub").textContent = `${loc.speed != null ? Math.round(loc.speed * 3.6) + " km/h · " : ""}±${Math.round(loc.acc || 0)} m · updated ${age < 60 ? age + " s" : Math.round(age / 60) + " min"} ago${age > 30 ? " (stale)" : ""}`;
 }
 
 async function refresh() {
-  try { render(await (await fetch("/api/state", { cache: "no-store" })).json()); } catch {}
+  try { let k = ""; try { k = localStorage.getItem("bg-admin") || ""; } catch {}
+    const d = await (await fetch("/api/state", { cache: "no-store", headers: k ? { "x-admin-key": k } : {} })).json();
+    render(d); renderMap(d.location); } catch {}
 }
-$("riders").addEventListener("click", async (e) => {
+document.addEventListener("click", async (e) => {
   const b = e.target.closest("button[data-r]");
-  if (!b) return;
-  await api("/api/scan", { trip_id: trip.id, rider_id: b.dataset.r, type: b.dataset.t });
-  refresh();
+  if (b && trip) { await api("/api/scan", { trip_id: trip.id, rider_id: b.dataset.r, type: b.dataset.t }); refresh(); }
+  if (e.target.closest("#askalexa")) { $("alexa").scrollIntoView(); $("say").focus(); }
 });
 $("reset").onclick = async () => { await api("/api/demo", {}); $("tail").innerHTML = ""; refresh(); };
 $("card").onclick = async () => {
@@ -137,7 +261,7 @@ $("card").onclick = async () => {
   const j = await r.json();
   $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
 };
-// Clearest English voice available; the dropdown lets you override (saved per browser).
+
 // macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
 function voices() { try { return speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en") && !NOVELTY.test(v.name)); } catch { return []; } }
@@ -151,6 +275,7 @@ function fillVoices() {
   sel.innerHTML = vs.map((v) => `<option ${cur && v.name === cur.name ? "selected" : ""}>${esc(v.name)}</option>`).join("");
 }
 try { speechSynthesis.onvoiceschanged = fillVoices; } catch {}
+
 const hist = [];
 function bub(cls, t) { const d = document.createElement("div"); d.className = cls; d.textContent = t; $("chat").appendChild(d); $("chat").scrollTop = 1e9; return d; }
 async function ask(text) {

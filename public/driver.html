@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bus Guardian — Driver</title>
+<style>
+:root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--ok:#16a34a;--bad:#dc2626}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1412;--card:#16201d;--fg:#eaf1ee;--mut:#8ea39b;--ok:#3ccf74;--bad:#ff6b6b}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:16px}
+.c{background:var(--card);border-radius:20px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 24px rgba(15,31,61,.1);text-align:center}
+h1{margin:0 0 4px;font-size:22px}p{color:var(--mut);margin:6px 0 18px}
+button{font:inherit;font-weight:700;font-size:18px;border:0;border-radius:14px;padding:16px;width:100%;background:var(--ok);color:#fff;cursor:pointer}
+button.stop{background:var(--bad)}
+#st{margin-top:16px;font-size:14px;color:var(--mut);min-height:60px}
+</style>
+</head>
+<body>
+<div class="c">
+  <h1>🚌 Driver location</h1>
+  <p>Share this phone's GPS with the Bus Guardian dashboard while the van is moving. Only the position is sent; stop any time.</p>
+  <button id="b">Start sharing location</button>
+  <div id="st">Not sharing.</div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+let watch = null, last = 0, key = null;
+try { key = localStorage.getItem("bg-admin"); } catch {}
+const send = (body) => fetch("/api/location", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key, ...body }) });
+$("b").onclick = async () => {
+  if (watch !== null) {
+    navigator.geolocation.clearWatch(watch); watch = null;
+    await send({ lat: 0, lng: 0, stop: true }).catch(() => {});
+    $("b").textContent = "Start sharing location"; $("b").className = ""; $("st").textContent = "Stopped. Location cleared."; return;
+  }
+  if (!key) { key = prompt("Admin key"); try { key && localStorage.setItem("bg-admin", key); } catch {} }
+  if (!navigator.geolocation) { $("st").textContent = "This browser has no GPS."; return; }
+  $("b").textContent = "Stop sharing"; $("b").className = "stop"; $("st").textContent = "Waiting for GPS…";
+  watch = navigator.geolocation.watchPosition(async (pos) => {
+    if (Date.now() - last < 4000) return; last = Date.now();   // ~1 update / 4 s is plenty and kind to the battery
+    const c = pos.coords;
+    const r = await send({ lat: c.latitude, lng: c.longitude, speed: c.speed, acc: c.accuracy }).catch(() => null);
+    if (r && r.status === 401) { try { localStorage.removeItem("bg-admin"); } catch {} key = null; $("st").textContent = "Wrong admin key. Stop and start again."; return; }
+    $("st").textContent = `Sharing ✓ ${new Date().toLocaleTimeString()} · ±${Math.round(c.accuracy)} m` + (c.speed != null ? ` · ${Math.round(c.speed * 3.6)} km/h` : "");
+  }, (e) => { $("st").textContent = "GPS error: " + e.message + " (allow location for this site)"; }, { enableHighAccuracy: true, maximumAge: 2000 });
+};
+</script>
+</body>
+</html>

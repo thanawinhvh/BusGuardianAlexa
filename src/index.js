@@ -85,7 +85,9 @@ export class GuardStore extends DurableObject {
     if (path === "/api/state" && request.method === "GET") {
       const state = await this.load();
       if (G.raiseAlerts(state, G.dueAlerts(state)).length) await this.save(state);
+      const admin = this.isAdmin(request, url, null);
       return json({
+        location: admin ? state.location || null : undefined,
         trips: state.trips.slice(0, 5).map((t) => ({
           ...G.publicTrip(t),
           summary: G.summary(state, t),
@@ -109,6 +111,19 @@ export class GuardStore extends DurableObject {
       if (r.err) return json({ error: r.err }, 400);
       await this.save(state);
       return json({ ok: true, summary: G.summary(state, t) });
+    }
+
+    // Driver phone (public/driver.html) reports its GPS position. Keeps only a short trail.
+    if (path === "/api/location" && request.method === "POST") {
+      const lat = Number(body.lat), lng = Number(body.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return json({ error: "lat/lng required." }, 400);
+      const state = await this.load();
+      const p = { lat, lng, speed: Number.isFinite(Number(body.speed)) ? Number(body.speed) : null, acc: Number(body.acc) || null, at: Date.now() };
+      const trail = (state.location?.trail || []).slice(-199);
+      if (body.stop) state.location = null;
+      else state.location = { ...p, trail: [...trail, [lat, lng]] };
+      await this.save(state);
+      return json({ ok: true });
     }
 
     // Simulated Alexa+: Claude chooses tools and every call goes through the MCP handler.
