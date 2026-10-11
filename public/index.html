@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bus Guardian</title>
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 :root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--line:#e3e8ee;--side:#fff;
 --ok:#16a34a;--ok-bg:#e8f7ee;--warn:#d97706;--warn-bg:#fdf3e1;--bad:#dc2626;--bad-bg:#fde8e8;--acc:#16a34a;--acc-fg:#fff;
@@ -18,8 +19,7 @@ svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-l
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 .side{background:var(--side);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
 .brand{display:flex;align-items:center;gap:10px;padding:4px 8px 22px}
-.logo{width:42px;height:42px;border-radius:12px;background:var(--acc);color:var(--acc-fg);display:grid;place-items:center}
-.logo svg{width:24px;height:24px}
+.logo{width:46px;height:46px;object-fit:contain;flex:none}
 .brand b{display:block;font-size:18px;line-height:1.15}.brand small{color:var(--mut);font-size:12px}
 nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;color:var(--fg);text-decoration:none;font-weight:500;margin-bottom:4px}
 nav a:hover{background:var(--bg)}nav a.on{background:var(--ok-bg);color:var(--ok)}
@@ -95,7 +95,7 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
 <body>
 <div class="app">
 <aside class="side">
-  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 7.8-8 9-4.8-1.2-8-4.5-8-9V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/></svg></div><div><b>Bus Guardian</b><small>No child left behind</small></div></div>
+  <div class="brand"><img class="logo" src="/logo.png" alt="Bus Guardian logo" width="46" height="46"><div><b>Bus Guardian</b><small>No child left behind</small></div></div>
   <nav>
     <a href="#dash" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Dashboard</a>
     <a href="#riders"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c2 .6 3.2 2.3 3.5 5.2"/></svg>Riders</a>

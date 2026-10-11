@@ -1,3 +1,5 @@
+<p align="center"><img src="public/logo-full.png" alt="Bus Guardian" width="320"></p>
+
 # Bus Guardian — Alexa, is every kid off the van?
 
 An Alexa+ agent backend (self-hosted **MCP server, spec 2025-11-25, Streamable HTTP**) that keeps children from being left on school vehicles.
