@@ -109,7 +109,7 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
 <main id="dash">
   <div class="top">
     <div><h1>Dashboard</h1><p id="tripline">Loading…</p></div>
-    <div class="pills"><div class="pill" id="today"></div><div class="pill live"><span class="dot"></span>Live</div></div>
+    <div class="pills"><div class="pill" id="today"></div><select class="pill" id="lang" title="Language"><option value="en">English</option><option value="th">ไทย</option></select><div class="pill live"><span class="dot"></span>Live</div></div>
   </div>
 
   <div class="grid">
@@ -130,7 +130,7 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
     </div>
 
     <div class="card" id="alexa">
-      <h2>🔊 Alexa+ <span class="muted">(simulated)</span> <select id="lang" title="Language" style="float:right"><option value="en">English</option><option value="th">ไทย</option></select></h2>
+      <h2>🔊 Alexa+ <span class="muted">(simulated)</span></h2>
       <p class="sub">Claude calls the same MCP tools a real Alexa+ agent would. Red lines are the server saying no.</p>
       <div class="chips" id="chips"></div>
       <div class="chat" id="chat"></div>
@@ -163,17 +163,61 @@ let trip = null;
 function key() {
   let k = null;
   try { k = localStorage.getItem("bg-admin"); } catch {}
-  if (!k) { k = prompt("Admin key"); try { k && localStorage.setItem("bg-admin", k); } catch {} }
+  if (!k) { k = prompt(lang() === "th" ? t("adminKey") : "Admin key"); try { k && localStorage.setItem("bg-admin", k); } catch {} }
   return k;
 }
 async function api(path, body) {
-  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), ...body }) });
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), lang: lang(), ...body }) });
   const j = await r.json();
   if (r.status === 401) { try { localStorage.removeItem("bg-admin"); } catch {} }
   if (!r.ok) alert(j.error || "Error");
   return j;
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---- i18n (English / ไทย) ----
+const D = {
+  th: {
+    noTripT: "ยังไม่มีทริป", noTripM: 'กด "รีเซ็ตทริปตัวอย่าง" ในส่วนผู้ดูแล', clearT: "ปลอดภัยทั้งหมด", clearM: (n) => `เด็กลงครบ ${n} คน และตรวจท้ายรถแล้ว`,
+    closedT: "ปิดทริปอย่างปลอดภัย", closedM: "เด็กทุกคนที่ขึ้นรถลงครบ และตรวจท้ายรถแล้ว", urgentT: "แจ้งเตือนความปลอดภัยด่วน",
+    onboardT: "มีเด็กอยู่บนรถ", onboardM: (l) => `อยู่บนรถ: ${l}`, tailT: "ต้องตรวจท้ายรถ", tailM: "เด็กลงหมดแล้ว ต้องมีคนเดินไปท้ายรถและอ่านรหัสให้ฟัง",
+    waitT: "รอเด็กขึ้นรถ", waitM: "ยังไม่มีใครถูกสแกนขึ้นรถ", ask: "ถาม Alexa+",
+    statRiders: "เด็กทั้งหมด", Boarded: "ขึ้นรถแล้ว", OnBoard: "อยู่บนรถ", GotOff: "ลงแล้ว",
+    sTotal: "จำนวนทั้งหมด", sScanned: "สแกนขึ้นแล้ว", sNow: "อยู่บนรถตอนนี้", sOff: "สแกนลงแล้ว", sNone: "ยังไม่มี",
+    tripStatus: "สถานะทริป", ACTIVE: "กำลังเดินทาง", FINISHED: "จบทริปแล้ว", driver: "คนขับ", teacher: "ครู",
+    prog: (a, b, x) => `ลงแล้ว ${a} จาก ${b} คน · ตรวจท้ายรถ: ${x}`, notDone: "ยังไม่ได้ตรวจ", doneBy: (by) => `ตรวจโดย ${by}`,
+    nDone: "เสร็จสิ้น", nOff: "ถัดไป: ให้เด็กลงให้ครบ", nTail: "ถัดไป: ตรวจท้ายรถ", nClose: "ถัดไป: ปิดทริป", nBoard: "ถัดไป: ขึ้นรถ",
+    cOn: "● อยู่บนรถ", cOff: "✓ ลงแล้ว", cNone: "ยังไม่ขึ้นรถ", bBoard: "ขึ้นรถ", bOff: "ลงรถ",
+    teacherR: "ครู", parentR: "ผู้ปกครอง", urgent: "ด่วน", none: "ยังไม่มี", noActive: "ไม่มีทริปที่กำลังเดินทาง",
+    locHelp: "เปิด <b>/driver</b> บนมือถือคนขับแล้วกดเริ่ม เป็น GPS จริงจากเครื่องนั้น ไม่ได้จำลอง",
+    locSub: (sp, acc, age, stale) => `${sp != null ? sp + " กม./ชม. · " : ""}±${acc} ม. · อัปเดต ${age} ที่แล้ว${stale ? " (ข้อมูลเก่า)" : ""}`, sec: "วินาที", min: "นาที",
+    tailPost: (v) => `ติดไว้ที่เบาะหลังสุดของ ${v}:`, adminKey: "รหัสผู้ดูแล", noMic: "เบราว์เซอร์นี้ไม่รองรับการฟังเสียง พิมพ์แทนได้", wait: "กำลังรอ…",
+    // static text
+    "Dashboard": "แดชบอร์ด", "Riders": "เด็กบนรถ", "Alerts": "การแจ้งเตือน", "Admin": "ผู้ดูแล", "No child left behind": "ไม่ทิ้งเด็กไว้บนรถ",
+    "No trip": "ยังไม่มีทริป", "Press Reset demo trip": "กดรีเซ็ตทริปตัวอย่าง", "Live": "สด", "Loading…": "กำลังโหลด…",
+    "Driver taps simulate QR scans": "คนขับแตะเพื่อจำลองการสแกน QR", "PASSENGER": "เด็ก", "STATUS": "สถานะ", "ACTIONS": "การทำงาน",
+    "Live location": "ตำแหน่งรถสด", "(simulated)": "(จำลอง)", "Send": "ส่ง", "Voice:": "เสียง:", "Reset demo trip": "รีเซ็ตทริปตัวอย่าง",
+    "Show back-seat code card": "แสดงบัตรรหัสท้ายรถ", "Alerts sent": "แจ้งเตือนที่ส่งแล้ว", "Teacher and parents": "ครูและผู้ปกครอง",
+    "Claude calls the same MCP tools a real Alexa+ agent would. Red lines are the server saying no.": "Claude เรียกเครื่องมือ MCP ชุดเดียวกับที่ Alexa+ จริงจะเรียก บรรทัดสีแดงคือเซิร์ฟเวอร์ปฏิเสธ",
+    "The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.": "รหัสท้ายรถแสดงที่นี่ที่เดียว เพื่อพิมพ์ไปติดท้ายรถ Alexa+ ไม่มีทางเห็นรหัสนี้",
+  },
+};
+const lang = () => { let l = ""; try { l = localStorage.getItem("bg-lang") || ""; } catch {} if (l === "th" || l === "en") return l; return (navigator.language || "").startsWith("th") ? "th" : "en"; };
+const t = (k, ...a) => { const v = lang() === "th" ? D.th[k] : undefined; return typeof v === "function" ? v(...a) : v !== undefined ? v : k; };
+const EN = {};
+const SKIP = new Set(["banner", "stats", "status", "rows", "outbox", "tail", "chat", "locSub", "voice", "lang", "chips"]);
+function applyStatic() {
+  const th = lang() === "th";
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (n.parentElement.closest("script,style,select") || [...SKIP].some((id) => n.parentElement.closest("#" + id))) continue;
+    const raw = n.__en ?? n.nodeValue, key = raw.trim();
+    if (!key) continue;
+    if (D.th[key] !== undefined) { n.__en = raw; n.nodeValue = raw.replace(key, th ? D.th[key] : key); }
+  }
+  $("say").placeholder = th ? "คุยกับ Alexa+ …" : "Talk to Alexa+…";
+  document.documentElement.lang = th ? "th" : "en";
+}
 const COLORS = ["#16a34a", "#d97706", "#2563eb", "#9333ea", "#0891b2", "#db2777"];
 const av = (name, i) => `<div class="av" style="background:${COLORS[i % COLORS.length]}">${esc((name || "?")[0].toUpperCase())}</div>`;
 const I = {
@@ -187,45 +231,50 @@ const I = {
 
 function render(data) {
   trip = (data.trips || []).find((t) => t.status === "ACTIVE") || (data.trips || [])[0];
-  $("today").textContent = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  $("today").textContent = new Date().toLocaleDateString(lang() === "th" ? "th-TH" : "en-US", { month: "short", day: "numeric", year: "numeric" });
   if (!trip) {
-    $("banner").innerHTML = `<div class="banner warn"><div class="ic">${I.warn}</div><div><b>No trip yet</b><span>Press "Reset demo trip" in Admin.</span></div></div>`;
-    $("stats").innerHTML = $("status").innerHTML = $("rows").innerHTML = ""; $("tripline").textContent = "No active trip";
+    $("banner").innerHTML = `<div class="banner warn"><div class="ic">${I.warn}</div><div><b>${esc(lang() === "th" ? t("noTripT") : "No trip yet")}</b><span>${esc(lang() === "th" ? t("noTripM") : 'Press "Reset demo trip" in Admin.')}</span></div></div>`;
+    $("stats").innerHTML = $("status").innerHTML = $("rows").innerHTML = ""; $("tripline").textContent = lang() === "th" ? t("noActive") : "No active trip";
     return;
   }
+  const th = lang() === "th", L = (en, k, ...a) => th ? t(k, ...a) : en;
   const s = trip.summary, alerts = s.open_alerts || [];
-  let cls = "ok", title = "All clear", msg = `All ${s.got_off} children off and the back seat checked.`, ask = false;
-  if (trip.status === "FINISHED") { title = "Trip closed safely"; msg = "Every child who boarded got off, and the back seat was checked."; }
-  else if (alerts.length) { cls = "bad"; title = "Urgent safety alert"; msg = alerts[alerts.length - 1].text; ask = true; }
-  else if (s.still_on_board.length) { cls = "warn"; title = "Children on board"; msg = `On board: ${s.still_on_board.join(", ")}`; }
-  else if (s.boarded && s.back_seat_check === "not done") { cls = "warn"; title = "Back-seat check needed"; msg = "Everyone is off. Someone must walk to the back seat and read the code."; ask = true; }
-  else if (!s.boarded) { cls = "warn"; title = "Waiting for boarding"; msg = "Nobody has been scanned on yet."; }
-  $("banner").innerHTML = `<div class="banner ${cls}"><div class="ic">${cls === "ok" ? I.ok : I.warn}</div><div><b>${esc(title)}</b><span>${esc(msg)}</span></div>${ask ? '<button class="btn primary" id="askalexa">Ask Alexa+</button>' : ""}</div>`;
-  const st = [["Riders", s.riders_total, "Total passengers", "#16a34a", I.users], ["Boarded", s.boarded, "Scanned on", "#16a34a", I.ok],
-    ["On board", s.still_on_board.length, "Currently on vehicle", "#d97706", I.person], ["Got off", s.got_off, s.got_off ? "Scanned off" : "None yet", "#64708a", I.down]];
+  let cls = "ok", title = L("All clear", "clearT"), msg = th ? t("clearM", s.got_off) : `All ${s.got_off} children off and the back seat checked.`, ask = false;
+  if (trip.status === "FINISHED") { title = L("Trip closed safely", "closedT"); msg = L("Every child who boarded got off, and the back seat was checked.", "closedM"); }
+  else if (alerts.length) { cls = "bad"; title = L("Urgent safety alert", "urgentT"); msg = alerts[alerts.length - 1].text; ask = true; }
+  else if (s.still_on_board.length) { cls = "warn"; title = L("Children on board", "onboardT"); msg = th ? t("onboardM", s.still_on_board.join(", ")) : `On board: ${s.still_on_board.join(", ")}`; }
+  else if (s.boarded && s.back_seat_check === "not done") { cls = "warn"; title = L("Back-seat check needed", "tailT"); msg = L("Everyone is off. Someone must walk to the back seat and read the code.", "tailM"); ask = true; }
+  else if (!s.boarded) { cls = "warn"; title = L("Waiting for boarding", "waitT"); msg = L("Nobody has been scanned on yet.", "waitM"); }
+  $("banner").innerHTML = `<div class="banner ${cls}"><div class="ic">${cls === "ok" ? I.ok : I.warn}</div><div><b>${esc(title)}</b><span>${esc(msg)}</span></div>${ask ? `<button class="btn primary" id="askalexa">${L("Ask Alexa+", "ask")}</button>` : ""}</div>`;
+  const st = [[L("Riders", "statRiders"), s.riders_total, L("Total passengers", "sTotal"), "#16a34a", I.users], [L("Boarded", "Boarded"), s.boarded, L("Scanned on", "sScanned"), "#16a34a", I.ok],
+    [L("On board", "OnBoard"), s.still_on_board.length, L("Currently on vehicle", "sNow"), "#d97706", I.person], [L("Got off", "GotOff"), s.got_off, s.got_off ? L("Scanned off", "sOff") : L("None yet", "sNone"), "#64708a", I.down]];
   $("stats").innerHTML = st.map(([l, v, sub, c, ic]) => `<div class="stat"><div class="h"><div class="i" style="background:${c}">${ic}</div>${l}</div><strong>${v}</strong><small>${sub}</small></div>`).join("");
   const pct = s.boarded ? Math.round((s.got_off / s.boarded) * 100) : 0;
-  const next = trip.status === "FINISHED" ? ["Done", "ok"] : s.still_on_board.length ? ["Next: everyone gets off", ""] : s.boarded && s.back_seat_check === "not done" ? ["Next: back-seat check", ""] : s.boarded ? ["Next: close trip", "ok"] : ["Next: boarding", ""];
-  $("status").innerHTML = `<div class="ic">${I.bus}</div><div><h3>Trip Status: ${esc(trip.status)}</h3><small>${esc(trip.name)} · ${esc(trip.plate)} · Driver ${esc(trip.driver || "–")}</small></div>
-    <div class="bar"><small>${s.got_off} of ${s.boarded} off · back-seat check: ${esc(s.back_seat_check)}</small><div class="track"><i style="width:${pct}%"></i></div></div><span class="next ${next[1]}">${next[0]}</span>`;
-  $("tripline").textContent = `${trip.name} · ${trip.plate} · teacher ${trip.teacher}`;
-  $("whoav").textContent = (trip.teacher || "?")[0]; $("whoname").textContent = trip.teacher || "–"; $("whotrip").textContent = `${trip.name} · ${trip.status}`;
+  const next = trip.status === "FINISHED" ? [L("Done", "nDone"), "ok"] : s.still_on_board.length ? [L("Next: everyone gets off", "nOff"), ""] : s.boarded && s.back_seat_check === "not done" ? [L("Next: back-seat check", "nTail"), ""] : s.boarded ? [L("Next: close trip", "nClose"), "ok"] : [L("Next: boarding", "nBoard"), ""];
+  const by = /^done by (.*) at /.exec(s.back_seat_check || "");
+  const check = s.back_seat_check === "not done" ? L("not done", "notDone") : by ? L(`done by ${by[1]}`, "doneBy", by[1]) : s.back_seat_check;
+  const stat = th ? t(trip.status) : trip.status;
+  $("status").innerHTML = `<div class="ic">${I.bus}</div><div><h3>${L("Trip Status", "tripStatus")}: ${esc(stat)}</h3><small>${esc(trip.name)} · ${esc(trip.plate)} · ${L("Driver", "driver")} ${esc(trip.driver || "–")}</small></div>
+    <div class="bar"><small>${th ? t("prog", s.got_off, s.boarded, check) : `${s.got_off} of ${s.boarded} off · back-seat check: ${esc(check)}`}</small><div class="track"><i style="width:${pct}%"></i></div></div><span class="next ${next[1]}">${next[0]}</span>`;
+  $("tripline").textContent = `${trip.name} · ${trip.plate} · ${L("teacher", "teacher")} ${trip.teacher}`;
+  $("whoav").textContent = (trip.teacher || "?")[0]; $("whoname").textContent = trip.teacher || "–"; $("whotrip").textContent = `${trip.name} · ${stat}`;
   $("rows").innerHTML = trip.riders.map((r, i) => {
     const x = trip.lastScan[r.id];
-    const chip = x === "BOARD" ? `<span class="chip on">● On board</span>` : x === "ALIGHT" ? `<span class="chip off">✓ Got off</span>` : `<span class="chip none">Not boarded</span>`;
+    const chip = x === "BOARD" ? `<span class="chip on">${L("● On board", "cOn")}</span>` : x === "ALIGHT" ? `<span class="chip off">${L("✓ Got off", "cOff")}</span>` : `<span class="chip none">${L("Not boarded", "cNone")}</span>`;
     const live = trip.status === "ACTIVE";
     return `<tr><td><div class="rn">${av(r.name, i)}<div><b>${esc(r.name)}</b><small>${esc(r.parent || "")}</small></div></div></td><td>${chip}</td>
-      <td class="acts">${live ? `<button class="btn sm primary" data-r="${r.id}" data-t="BOARD">Board</button> <button class="btn sm" data-r="${r.id}" data-t="ALIGHT">Off</button>` : ""}</td></tr>`;
+      <td class="acts">${live ? `<button class="btn sm primary" data-r="${r.id}" data-t="BOARD">${L("Board", "bBoard")}</button> <button class="btn sm" data-r="${r.id}" data-t="ALIGHT">${L("Off", "bOff")}</button>` : ""}</td></tr>`;
   }).join("");
   const out = (data.outbox || []).filter((m) => m.tripId === trip.id);
   $("nbadge").hidden = !out.length; $("nbadge").textContent = out.length;
-  $("outbox").innerHTML = out.length ? out.map((m, i) => `<div class="msg">${av(m.to, i)}<div class="t"><b>${esc(m.to)}</b> <small>${esc(m.role)} · ${new Date(m.at).toLocaleTimeString()}</small><br>${esc(m.text)}${/urgent|critical|overdue/i.test(m.text) ? '<br><span class="tag">URGENT</span>' : ""}</div></div>`).join("") : '<p class="muted">None yet.</p>';
+  const role = (r) => th ? t(r + "R") : r;
+  $("outbox").innerHTML = out.length ? out.map((m, i) => `<div class="msg">${av(m.to, i)}<div class="t"><b>${esc(m.to)}</b> <small>${esc(role(m.role))} · ${new Date(m.at).toLocaleTimeString(th ? "th-TH" : "en-US")}</small><br>${esc(m.text)}${/urgent|critical|overdue|ด่วน|ยังไม่มีใครตรวจ/i.test(m.text) ? `<br><span class="tag">${L("URGENT", "urgent")}</span>` : ""}</div></div>`).join("") : `<p class="muted">${L("None yet.", "none")}</p>`;
 }
 
 let map, marker, line;
 function renderMap(loc) {
   const el = $("map");
-  if (!loc || !window.L) { el.hidden = true; $("locSub").innerHTML = "Open <b>/driver.html</b> on the driver's phone and tap Start. Real GPS from that phone, nothing simulated."; return; }
+  if (!loc || !window.L) { el.hidden = true; $("locSub").innerHTML = lang() === "th" ? t("locHelp") : "Open <b>/driver</b> on the driver's phone and tap Start. Real GPS from that phone, nothing simulated."; return; }
   el.hidden = false;
   const ll = [loc.lat, loc.lng], age = Math.round((Date.now() - loc.at) / 1000);
   if (!map) {
@@ -234,7 +283,9 @@ function renderMap(loc) {
     marker = L.marker(ll).addTo(map); line = L.polyline(loc.trail || [], { color: "#16a34a", weight: 4 }).addTo(map);
   }
   marker.setLatLng(ll); line.setLatLngs(loc.trail || []); map.panTo(ll);
-  $("locSub").textContent = `${loc.speed != null ? Math.round(loc.speed * 3.6) + " km/h · " : ""}±${Math.round(loc.acc || 0)} m · updated ${age < 60 ? age + " s" : Math.round(age / 60) + " min"} ago${age > 30 ? " (stale)" : ""}`;
+  const ago = age < 60 ? age + (lang() === "th" ? " " + t("sec") : " s") : Math.round(age / 60) + (lang() === "th" ? " " + t("min") : " min");
+  $("locSub").textContent = lang() === "th" ? t("locSub", loc.speed != null ? Math.round(loc.speed * 3.6) : null, Math.round(loc.acc || 0), ago, age > 30)
+    : `${loc.speed != null ? Math.round(loc.speed * 3.6) + " km/h · " : ""}±${Math.round(loc.acc || 0)} m · updated ${ago} ago${age > 30 ? " (stale)" : ""}`;
 }
 
 async function refresh() {
@@ -252,7 +303,7 @@ $("card").onclick = async () => {
   if (!trip) return;
   const r = await fetch(`/api/tail-card?trip_id=${encodeURIComponent(trip.id)}`, { headers: { "x-admin-key": key() || "" } });
   const j = await r.json();
-  $("tail").innerHTML = r.ok ? `<p class="muted">Post at the back seat of ${esc(j.vehicle)}:</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
+  $("tail").innerHTML = r.ok ? `<p class="muted">${lang() === "th" ? t("tailPost", esc(j.vehicle)) : `Post at the back seat of ${esc(j.vehicle)}:`}</p><div class="tail">${esc(j.code)}</div>` : `<p class="muted">${esc(j.error)}</p>`;
 };
 
 const QUICK = {
@@ -261,11 +312,9 @@ const QUICK = {
   th: [["เด็กลงครบไหม?", "เด็กลงจากรถครบทุกคนไหมคะ"], ["ลงห้าคน", "มิ้นท์ แบงค์ ฟ้า ต้น และพลอย ลงจากรถแล้วค่ะ"], ["แจ้งเตือน", "แจ้งเตือนครูและผู้ปกครองด้วยค่ะ"],
        ["คนสุดท้ายลง", "น้องเก้าลงแล้ว ลงครบทุกคนแล้วค่ะ"], ["รหัสผิด", "ฉันตรวจท้ายรถแล้ว รหัสคือ TAIL-GUESS123"], ["ปิดทริปได้ไหม?", "ปิดทริปได้ไหมคะ"]],
 };
-function lang() { let l = "en"; try { l = localStorage.getItem("bg-lang") || "en"; } catch {} return l === "th" ? "th" : "en"; }
 function fillChips() {
   const l = lang(); $("lang").value = l;
   $("chips").innerHTML = QUICK[l].map(([t, q]) => `<button class="btn sm" data-q="${esc(q)}">${esc(t)}</button>`).join("");
-  $("say").placeholder = l === "th" ? "คุยกับ Alexa+ …" : "Talk to Alexa+…";
 }
 // macOS lists novelty/singing voices (Good News, Bells, Boing...) as English; keep real speaking voices only.
 const NOVELTY = /^(Albert|Bad News|Bahh|Bells|Boing|Bubbles|Cellos|Good News|Jester|Organ|Superstar|Trinoids|Whisper|Wobble|Zarvox|Hysterical|Deranged|Pipe Organ|Grandma|Grandpa|Eddy|Flo|Reed|Rocko|Sandy|Shelley)\b/;
@@ -287,7 +336,7 @@ async function ask(text) {
   text = text.trim(); if (!text) return;
   $("say").value = ""; bub("bub u", text); hist.push({ role: "user", content: text });
   const wait = bub("tool", "…");
-  const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), messages: hist }) });
+  const r = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), lang: lang(), messages: hist }) });
   const j = await r.json(); wait.remove();
   if (!r.ok) { bub("bub a", j.error || "Error"); hist.pop(); return; }
   (j.trace || []).forEach((t) => bub("tool" + (t.isError ? " err" : ""), "⚙ " + t.tool + "(" + JSON.stringify(t.arguments) + ")" + (t.isError ? " → refused" : " → ok")));
@@ -300,12 +349,17 @@ $("say").addEventListener("keydown", (e) => { if (e.key === "Enter") ask($("say"
 $("chips").addEventListener("click", (e) => { const b = e.target.closest("button[data-q]"); if (b) ask(b.dataset.q); });
 $("mic").onclick = () => {
   const R = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!R) return alert("Speech recognition is not available in this browser. Type instead.");
+  if (!R) return alert(lang() === "th" ? t("noMic") : "Speech recognition is not available in this browser. Type instead.");
   const r = new R(); r.lang = lang() === "th" ? "th-TH" : "en-US"; r.onresult = (e) => ask(e.results[0][0].transcript); r.start();
 };
 $("voice").onchange = (e) => { try { localStorage.setItem("bg-voice-" + lang(), e.target.value); } catch {} };
-$("lang").onchange = (e) => { try { localStorage.setItem("bg-lang", e.target.value); } catch {} fillChips(); fillVoices(); };
-fillChips();
+$("lang").onchange = (e) => {
+  try { localStorage.setItem("bg-lang", e.target.value); } catch {}
+  applyStatic(); fillChips(); fillVoices(); refresh();
+  let k = ""; try { k = localStorage.getItem("bg-admin") || ""; } catch {}
+  if (k) fetch("/api/lang", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: k, lang: lang() }) }).catch(() => {});  // alerts to parents follow the language
+};
+$("lang").value = lang(); applyStatic(); fillChips();
 fillVoices();
 refresh();
 setInterval(refresh, 2000);

@@ -103,6 +103,12 @@ export class GuardStore extends DurableObject {
     }
     if (!this.isAdmin(request, url, body)) return json({ error: "Admin key required." }, 401);
 
+    // Language for alerts to teacher/parents (also used by the overdue-check cron). Dashboard sends it with chat/demo/lang.
+    const setLang = async (state) => { if (body.lang === "th" || body.lang === "en") state.lang = body.lang; };
+    if (path === "/api/lang" && request.method === "POST") {
+      const state = await this.load(); await setLang(state); await this.save(state); return json({ ok: true, lang: state.lang || "en" });
+    }
+
     if (path === "/api/scan" && request.method === "POST") {
       const state = await this.load();
       const t = G.findTrip(state, body.trip_id);
@@ -132,7 +138,7 @@ export class GuardStore extends DurableObject {
       const history = (Array.isArray(body.messages) ? body.messages : []).slice(-12)
         .filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string");
       if (!history.length || history[history.length - 1].role !== "user") return json({ error: "Send the user's message last." }, 400);
-      const state = await this.load();
+      const state = await this.load(); await setLang(state);
       try {
         const r = await runAgent({ apiKey: this.env.ANTHROPIC_API_KEY, model: this.env.AGENT_MODEL, history, state });
         await this.save(state);
@@ -145,8 +151,14 @@ export class GuardStore extends DurableObject {
     }
 
     if (path === "/api/demo" && request.method === "POST") {
-      const state = G.emptyState();
-      G.createTrip(state, {
+      const state = G.emptyState(); await setLang(state);
+      G.createTrip(state, state.lang === "th" ? {
+        name: "ทัศนศึกษาสวนสัตว์", plate: "รถตู้ 2", driver: "ลุงสมชาย", teacher: "ครูเอิร์น",
+        riders: [
+          { name: "มิ้นท์", parent: "แม่ของมิ้นท์" }, { name: "แบงค์", parent: "พ่อของแบงค์" }, { name: "ฟ้า", parent: "แม่ของฟ้า" },
+          { name: "ต้น", parent: "ยายของต้น" }, { name: "พลอย", parent: "พ่อของพลอย" }, { name: "น้องเก้า", parent: "แม่ของน้องเก้า" },
+        ],
+      } : {
         name: "Zoo field trip",
         plate: "Van 2",
         driver: "Mr. Somchai",

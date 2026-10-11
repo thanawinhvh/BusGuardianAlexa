@@ -132,7 +132,9 @@ export function dueAlerts(state, now = Date.now()) {
     if (t.status !== "ACTIVE") continue;
     if (t.allOffAt && !t.inspection && now - t.allOffAt > TAIL_GRACE_MS) {
       out.push({ tripId: t.id, type: "NO_BACK_SEAT_CHECK", level: "CRITICAL",
-        text: `${t.plate || t.name}: everyone scanned off ${Math.round((now - t.allOffAt) / 60000)} min ago, but nobody has done the back-seat check.` });
+        text: state.lang === "th"
+          ? `${t.plate || t.name}: เด็กลงครบเมื่อ ${Math.round((now - t.allOffAt) / 60000)} นาทีที่แล้ว แต่ยังไม่มีใครตรวจท้ายรถค่ะ`
+          : `${t.plate || t.name}: everyone scanned off ${Math.round((now - t.allOffAt) / 60000)} min ago, but nobody has done the back-seat check.` });
     }
   }
   return out;
@@ -159,11 +161,15 @@ export function resolveAlerts(state, tripId, type, now = Date.now()) {
 export function escalate(state, trip, reason, now = Date.now()) {
   const c = counts(state, trip);
   const msgs = [];
-  const head = `Bus Guardian alert - ${trip.name}${trip.plate ? " (" + trip.plate + ")" : ""}: ${reason}`;
-  msgs.push({ to: trip.teacher || "teacher", role: "teacher", text: `${head} Still on board: ${c.onBoard.join(", ") || "none"}.` });
+  const th = state.lang === "th";
+  const plate = trip.plate ? " (" + trip.plate + ")" : "";
+  const head = th ? `แจ้งเตือนจาก Bus Guardian - ${trip.name}${plate}: ${reason}` : `Bus Guardian alert - ${trip.name}${plate}: ${reason}`;
+  const none = th ? "ไม่มี" : "none";
+  msgs.push({ to: trip.teacher || (th ? "ครู" : "teacher"), role: "teacher", text: th ? `${head} ยังอยู่บนรถ: ${c.onBoard.join(", ") || none}` : `${head} Still on board: ${c.onBoard.join(", ") || none}.` });
   for (const r of trip.riders) {
     if (c.onBoard.includes(r.name)) {
-      msgs.push({ to: r.parent || `parent of ${r.name}`, role: "parent", text: `${head} Our records show ${r.name} has not been scanned off the vehicle yet. The teacher is checking now.` });
+      msgs.push({ to: r.parent || (th ? `ผู้ปกครองของ${r.name}` : `parent of ${r.name}`), role: "parent",
+        text: th ? `${head} ระบบยังไม่บันทึกว่า ${r.name} ลงจากรถ ครูกำลังตรวจสอบอยู่ค่ะ` : `${head} Our records show ${r.name} has not been scanned off the vehicle yet. The teacher is checking now.` });
     }
   }
   for (const m of msgs) state.outbox.push({ id: uid("m"), tripId: trip.id, at: now, ...m });
