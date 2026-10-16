@@ -6,8 +6,7 @@
 <title>Bus Guardian — Driver</title>
 <style>
 :root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--ok:#16a34a;--bad:#dc2626}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1412;--card:#16201d;--fg:#eaf1ee;--mut:#8ea39b;--ok:#3ccf74;--bad:#ff6b6b}}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:16px}
+/* ponytail: light only, minimal dot grid */ body{margin:0;background:radial-gradient(circle at 1px 1px,rgba(15,31,61,.09) 1px,transparent 0) 0 0/22px 22px fixed,var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;padding:16px}
 .c{background:var(--card);border-radius:20px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 24px rgba(15,31,61,.1);text-align:center}
 h1{margin:0 0 4px;font-size:22px}p{color:var(--mut);margin:6px 0 18px}
 button{font:inherit;font-weight:700;font-size:18px;border:0;border-radius:14px;padding:16px;width:100%;background:var(--ok);color:#fff;cursor:pointer}

@@ -9,12 +9,9 @@
 :root{--bg:#eef2f1;--card:#fff;--fg:#0f1f3d;--mut:#64708a;--line:#e3e8ee;--side:#fff;
 --ok:#16a34a;--ok-bg:#e8f7ee;--warn:#d97706;--warn-bg:#fdf3e1;--bad:#dc2626;--bad-bg:#fde8e8;--acc:#16a34a;--acc-fg:#fff;
 --shadow:0 1px 2px rgba(15,31,61,.05),0 8px 24px rgba(15,31,61,.06)}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1412;--card:#16201d;--fg:#eaf1ee;--mut:#8ea39b;--line:#25332e;--side:#121b18;
---ok:#3ccf74;--ok-bg:#12301f;--warn:#f0a63a;--warn-bg:#33270f;--bad:#ff6b6b;--bad-bg:#3a1717;--acc:#2fbf63;--acc-fg:#04130a;
---shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3)}}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+/* ponytail: light only, minimal dot grid */ body{margin:0;background:radial-gradient(circle at 1px 1px,rgba(15,31,61,.09) 1px,transparent 0) 0 0/22px 22px fixed,var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 .side{background:var(--side);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
@@ -73,7 +70,6 @@ td{padding:11px 6px;border-top:1px solid var(--line);vertical-align:middle}
 .msg:first-of-type{border-top:0}.msg .t{min-width:0;font-size:14px}.msg small{color:var(--mut)}
 .tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-top:4px;background:var(--bad-bg);color:var(--bad)}
 #map{height:260px;border-radius:12px;margin-top:10px;z-index:0}
-@media (prefers-color-scheme:dark){#map .leaflet-tile{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.9)}}
 .side-col{position:sticky;top:20px}
 .muted{color:var(--mut);font-size:14px}
 .chat{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:12px 0}
