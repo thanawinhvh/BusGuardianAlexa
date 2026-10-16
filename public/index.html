@@ -141,6 +141,7 @@ main{padding:16px 14px 60px}.stats{grid-template-columns:repeat(2,1fr)}.top h1{f
     <div class="card" id="admin">
       <h2>Admin</h2>
       <p class="sub">The back-seat code is only shown here, to print and post at the back of the vehicle. The Alexa+ agent never sees it.</p>
+      <p><input id="akey" type="password" placeholder="Admin key" autocomplete="current-password" style="font:inherit;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);width:220px;max-width:100%"></p>
       <button class="btn danger" id="reset">Reset demo trip</button>
       <button class="btn" id="card">Show back-seat code card</button>
       <button class="btn" id="codes">Show parent codes</button>
@@ -165,13 +166,14 @@ let trip = null;
 function key() {
   let k = null;
   try { k = localStorage.getItem("bg-admin"); } catch {}
-  if (!k) { k = prompt(lang() === "th" ? t("adminKey") : "Admin key"); try { k && localStorage.setItem("bg-admin", k); } catch {} }
-  return k;
+  // ponytail: inline field, not prompt() — prompt dialogs are blocked in some embedded browsers
+  if (!k) { k = $("akey").value.trim(); if (k) { try { localStorage.setItem("bg-admin", k); } catch {} } else { $("akey").focus(); } }
+  return k || null;
 }
 async function api(path, body) {
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ key: key(), lang: lang(), ...body }) });
   const j = await r.json();
-  if (r.status === 401) { try { localStorage.removeItem("bg-admin"); } catch {} }
+  if (r.status === 401) { try { localStorage.removeItem("bg-admin"); } catch {} $("akey").value = ""; }
   if (!r.ok) alert(j.error || "Error");
   return j;
 }
