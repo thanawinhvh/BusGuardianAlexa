@@ -216,7 +216,7 @@ export class GuardStore extends DurableObject {
     if (path === "/api/demo" && request.method === "POST") {
       const state = G.emptyState(); await setLang(state);
       G.createTrip(state, state.lang === "th" ? {
-        name: "ทัศนศึกษาสวนสัตว์", plate: "รถตู้ 2", driver: "ลุงสมชาย", teacher: "ครูเอิร์น",
+        name: "ทัศนศึกษาสวนสัตว์", plate: "รถตู้ 2", driver: "ลุงสมชาย", teacher: "ครูมะลิ",
         riders: [
           { name: "มิ้นท์", parent: "แม่ของมิ้นท์" }, { name: "แบงค์", parent: "พ่อของแบงค์" }, { name: "ฟ้า", parent: "แม่ของฟ้า" },
           { name: "ต้น", parent: "ยายของต้น" }, { name: "พลอย", parent: "พ่อของพลอย" }, { name: "น้องเก้า", parent: "แม่ของน้องเก้า" },
@@ -225,7 +225,7 @@ export class GuardStore extends DurableObject {
         name: "Zoo field trip",
         plate: "Van 2",
         driver: "Mr. Somchai",
-        teacher: "Teacher Earn",
+        teacher: "Teacher Mali",
         riders: [
           { name: "Mint", parent: "Mint's mom" },
           { name: "Bank", parent: "Bank's dad" },

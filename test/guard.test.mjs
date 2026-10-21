@@ -12,7 +12,7 @@ const call = (state, name, args, now) => {
 
 function demo() {
   const state = G.emptyState();
-  G.createTrip(state, { name: "Zoo trip", plate: "Van 2", teacher: "Teacher Earn", tailCode: "TAIL-ABCD2345",
+  G.createTrip(state, { name: "Zoo trip", plate: "Van 2", teacher: "Teacher Mali", tailCode: "TAIL-ABCD2345",
     riders: [{ name: "Mint", parent: "Mint's mom" }, { name: "Bank", parent: "Bank's dad" }, { name: "Nong Kao", parent: "Kao's mom" }] });
   return state;
 }
@@ -73,7 +73,7 @@ test("R3: overdue back-seat check raises one CRITICAL alert; escalation reaches 
   const s2 = demo();
   call(s2, "record_scan", { child_name: "Nong Kao", event: "boarded" });
   const r = call(s2, "alert_teacher_and_parents", { reason: "Van is back at school but Kao was not scanned off." });
-  assert.deepEqual(r.outbox.map((m) => m.to).sort(), ["Kao's mom", "Teacher Earn"]);
+  assert.deepEqual(r.outbox.map((m) => m.to).sort(), ["Kao's mom", "Teacher Mali"]);
 });
 
 test("the back-seat code never leaks through tools or the public view", () => {

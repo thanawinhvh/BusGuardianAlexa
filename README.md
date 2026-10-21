@@ -5,7 +5,7 @@
 An Alexa+ agent backend (self-hosted **MCP server, spec 2025-11-25, Streamable HTTP**) that keeps children from being left on school vehicles.
 
 > "Alexa, did every kid get off the van?"
-> "Not yet. Nong Kao is still on board, and nobody has done the back-seat check. I've alerted Teacher Earn and Kao's mom."
+> "Not yet. Nong Kao is still on board, and nobody has done the back-seat check. I've alerted Teacher Mali and Kao's mom."
 
 ## Why
 
