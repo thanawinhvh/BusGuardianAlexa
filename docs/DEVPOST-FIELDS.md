@@ -1,7 +1,7 @@
 # Devpost fields — paste after the video is uploaded
 
 Track: **Alexa+** · Repo: https://github.com/thanawinhvh/BusGuardianAlexa (MIT) · Live: https://bus-guardian.persuaded-mix.workers.dev
-Video: (YouTube Unlisted link here)
+Video: https://youtu.be/mqBn0uI93Yg
 
 ---
 

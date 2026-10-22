@@ -1,11 +1,12 @@
 # Demo video script (target 2:50, limit 3:00) — English voice-over, one Thai demo beat
 
 Live URL: https://bus-guardian.persuaded-mix.workers.dev — dashboard `/`, parent page `/parent`.
-Voice: read each line as its own take (12 takes, ~10–15 s each). No music. No real children, names, photos or school name.
+Voice: read each line as its own take (12 takes, ~10–15 s each). Music optional: a MuseGen instrumental is fine (Thanawin holds commercial-use documents from Suno and kie.ai), kept low under the voice. No real children, names, photos or school name.
 
 | # | Time | On screen | Say |
 |---|------|-----------|-----|
-| 1 | 0:00 | Title card: "Bus Guardian" | A child fell asleep on a school bus. Everyone else got off. The bus drove away. |
+| 0 | 0:00 | **Cold open (no voice, 5 s):** zoom on beat-9 footage, the red REFUSED line. On-screen text: "Alexa tried to end the trip. A child was still on board." | *(silence, text only)* |
+| 1 | 0:05 | Title card: "Bus Guardian" | A child fell asleep on a school bus. Everyone else got off. The bus drove away. |
 | 2 | 0:10 | Same card | The driver found him only when he checked the bus before parking at home. That child is my nephew. |
 | 3 | 0:22 | Dashboard, 6 riders on board | Bus Guardian is an MCP server for Alexa+. It gives Alexa the school's live headcount, and one rule it cannot break: no child is left behind. |
 | 4 | 0:38 | Tap "Five got off" | The teacher just talks. Five children got off. Alexa records each one. |
@@ -15,8 +16,8 @@ Voice: read each line as its own take (12 takes, ~10–15 s each). No music. No 
 | 8 | 1:48 | Dashboard → switch language to ไทย → tap "เด็กลงครบไหม?" → Thai voice answers (subtitle EN) | And it works in Thai. The teacher asks in Thai, and Alexa answers in a Thai voice. |
 | 9 | 2:02 | Switch back to English → tap "Close trip?" then "Wrong code" (red tool lines) | Alexa tries to close the trip. The server refuses. Someone must walk to the back seat and read a secret code. Alexa does not know it, so it cannot guess it. A wrong code is refused. |
 | 10 | 2:24 | Admin → **Show back-seat code card** → type the real code → trip closes; parent phone flips to "Got off safely" after "Last one off" | The card at the back of the van has the real code. Only now can the trip close. |
-| 11 | 2:36 | Code: guard.js + mcp.js (roles) | The safety rules and the roles live in the server, not in the prompt. The model can raise an alarm, but it can never clear one. |
-| 12 | 2:48 | Repo URL | Open source, MIT. Bus Guardian: Alexa, is every kid off the van? |
+| 11 | 2:36 | Card (8 s), 3 lines: "Alexa CAN raise an alarm ✓ / Alexa CANNOT close a trip with a child on board ✗ / Alexa CANNOT skip the back-seat check ✗" (2 s flash of guard.js behind it) | The safety rules and the roles live in the server, not in the prompt. The model can raise an alarm, but it can never clear one. |
+| 12 | 2:46 | Repo URL | The safety rules come from our school system. The MCP server and the Alexa+ agent were built during this hackathon. Open source, MIT. Bus Guardian: Alexa, is every kid off the van? |
 
 Beat 8 subtitle (burn in): Q "Did every child get off the van?" · A = whatever Alexa actually says, translated.
 
@@ -50,7 +51,9 @@ Record with QuickTime → New Screen Recording (or Cmd+Shift+5), whole screen wi
 - Quiet room, phone 20 cm away, same distance every take. Redo any take with a stumble; only the takes are cut, not words inside them.
 
 ### D. Edit (Canva or CapCut)
-1. Lay the 12 VO takes on the timeline at the times in the table; trim the screen recording under each.
+1. Lay the 12 VO takes on the timeline at the times in the table; trim the screen recording under each. Put beat 0 (cold open) first: cut ~5 s from the beat-9 footage where the red refusal line appears, zoom in, add the on-screen text.
+   - **English captions on every line** (CapCut auto-captions, then fix words). Judges often watch muted.
+   - **Zoom in** (keyframe ~150–200%) on the chat / alert / phone area in each beat so text is readable on a laptop. Never leave the full dashboard small for more than 3 s.
 2. Keep screen audio muted except beat 8 (Thai voice) — duck the VO there.
 3. Add the beat-8 English subtitle and a title card / end card with the repo URL.
-4. Check length ≤ 2:59, export 1080p, upload to YouTube **Unlisted**, paste link into Devpost.
+4. Check length ≤ 2:59, export 1080p, upload to YouTube **Public** (rules: "publicly visible on YouTube or Vimeo"), paste link into Devpost.
